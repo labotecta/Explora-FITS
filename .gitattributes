@@ -1,3 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 git lfs track "*.bin"
+git lfs track "*.fit"
+git lfs track "*.fits"
