@@ -107,6 +107,9 @@
 0;103;"H"
 0;104;"¿Actualizar el fichero FITS?. Se sobreescribirá el fichero actual"
 0;105;"Creado por ExploraFits a partir de un BIN"
+0;106;"datos"
+0;107;"bytes"
+0;108;"Los ficheros cubren zonas disjuntas"
 //
 // Language 1
 //
@@ -216,3 +219,6 @@
 1;103;"T"
 1;104;"Update the FITS file? The current file will be overwritten"
 1;105;"Created by ExploraFits from an BIN"
+1;106;"data"
+1;107;"bytes"
+1;108;"Files cover disjoint areas"
