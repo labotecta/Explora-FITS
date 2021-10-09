@@ -6,7 +6,7 @@ ExploraFits.exe
 ExploraFits.pdb
 ExploraFits.runtimeconfig.json
 idiomas.txt
-Pueden estar en cualquier carpeta, incluso ena una memoria USB
+Pueden estar en cualquier carpeta, incluso en una memoria USB
 
 Los ficheros de los catálogos están comprimidos en el archivo catalogos.rar de la carpeta Catalogos
 
