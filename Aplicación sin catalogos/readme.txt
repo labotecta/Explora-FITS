@@ -1,4 +1,4 @@
-Los ficheros de la aplicaci髇 son los siguientes:
+锘縇os ficheros de la aplicaci贸n son los siguientes:
 camposHL.txt
 ExploraFits.deps.json
 ExploraFits.dll
@@ -8,12 +8,12 @@ ExploraFits.runtimeconfig.json
 idiomas.txt
 Pueden estar en cualquier carpeta, incluso ena una memoria USB
 
-Par que la aplicaci髇 pueda utilizar el cat醠ogo HyperLEDA hay que copiar los dos ficheros siguientes:
+Par que la aplicaci贸n pueda utilizar el cat谩logo HyperLEDA hay que copiar los dos ficheros siguientes:
 HyperLeda_meandata_1631273210.txt
 indicesHL.bin
-A la misma carpeta donde est閚 los ficheros de la aplicaci髇
+A la misma carpeta donde est茅n los ficheros de la aplicaci贸n
 
-Para utilizar el c醫alogo de estrellas Smithsonian hay que copiar los dos ficheros siguientes:
+Para utilizar el c谩talogo de estrellas Smithsonian hay que copiar los dos ficheros siguientes:
 indicesSAO.bin
 sao.txt
-A la misma carpeta donde est閚 los ficheros de la aplicaci髇
+A la misma carpeta donde est茅n los ficheros de la aplicaci贸n
