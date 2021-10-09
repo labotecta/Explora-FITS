@@ -96,8 +96,8 @@
 0;92;"Apila datos"
 0;93;"Los datos básicos no son congruentes"
 0;94;"Creado por ExploraFits a partir de una imagen"
-0;95;"Creado por ExploraFits apilando imagenes"
-0;96;"Creado por ExploraFits restando imagenes"
+0;95;"Creado por ExploraFits apilando ficheros"
+0;96;"Creado por ExploraFits restando ficheros"
 0;97;"Hay que seleccionar más de un fichero"
 0;98;"Sólo se pueden seleccionar dos ficheros"
 0;99;"Apilar imágenes"
@@ -106,6 +106,7 @@
 0;102;"D"
 0;103;"H"
 0;104;"¿Actualizar el fichero FITS?. Se sobreescribirá el fichero actual"
+0;105;"Creado por ExploraFits a partir de un BIN"
 //
 // Language 1
 //
@@ -204,8 +205,8 @@
 1;92;"Stack data"
 1;93;"The basic data are not congruent"
 1;94;"Created by ExploraFits from an image"
-1;95;"Created by ExploraFits by stacking images"
-1;96;"Created by ExploraFits subtracting images"
+1;95;"Created by ExploraFits by stacking files"
+1;96;"Created by ExploraFits subtracting files"
 1;97;"You have to select more than one file"
 1;98;"Only two files can be selected"
 1;99;"Stack images"
@@ -214,3 +215,4 @@
 1;102;"F"
 1;103;"T"
 1;104;"Update the FITS file? The current file will be overwritten"
+1;105;"Created by ExploraFits from an BIN"
