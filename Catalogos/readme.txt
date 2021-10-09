@@ -1,7 +1,4 @@
-# Explora FITS
- Aplicación para explorar ficheros en formato FITS. Este formato es el estándar en astronomía
-
-Los ficheros de la aplicación son los siguientes:
+﻿Los ficheros de la aplicación son los siguientes:
 camposHL.txt
 ExploraFits.deps.json
 ExploraFits.dll
@@ -20,5 +17,3 @@ Para utilizar el cátalogo de estrellas Smithsonian hay que copiar los dos fiche
 indicesSAO.bin
 sao.txt
 A la misma carpeta donde estén los ficheros de la aplicación
-
-## Contacto: alberto@interajedrez.com
