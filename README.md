@@ -2,7 +2,7 @@
  Application to explore files in FITS format. This format is the standard in astronomy
 ## Only works on Windows operating system
 
- <em>Aplicación para explorar ficheros en formato FITS. Este formato es el estándar en astronomía</em>
+ <span style="color:blue"><em>Aplicación para explorar ficheros en formato FITS. Este formato es el estándar en astronomía</em></span>
 ## Sólo funciona en el sistema operativo Windows
 
 <p>The application files are the following: </p>
