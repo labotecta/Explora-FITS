@@ -1,9 +1,9 @@
 # Explora FITS
- Application to explore files in FITS format. This format is the standard in astronomy
-### Only works on Windows operating system
+<p>Application to explore files in FITS format. This format is the standard in astronomy
+### Only works on Windows operating system</p>
 
- <em>Aplicación para explorar ficheros en formato FITS. Este formato es el estándar en astronomía</em>
-### Sólo funciona en el sistema operativo Windows
+<p><em>Aplicación para explorar ficheros en formato FITS. Este formato es el estándar en astronomía</em>
+### Sólo funciona en el sistema operativo Windows</p>
 
 <p>The application files are the following: <br>
 <em>Los ficheros de la aplicación son los siguientes:</em></p>
