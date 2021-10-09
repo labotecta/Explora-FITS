@@ -1,26 +1,24 @@
 # Explora FITS
  Aplicación para explorar ficheros en formato FITS. Este formato es el estándar en astronomía
 
-Los ficheros de la aplicación son los siguientes:
-camposHL.txt
-ExploraFits.deps.json
-ExploraFits.dll
-ExploraFits.exe
-ExploraFits.pdb
-ExploraFits.runtimeconfig.json
-idiomas.txt
-Pueden estar en cualquier carpeta, incluso ena una memoria USB
+<p>Los ficheros de la aplicación son los siguientes:</p>
+<p>camposHL.txt<br>
+ExploraFits.deps.json<br>
+ExploraFits.dll<br>
+ExploraFits.exe<br>
+ExploraFits.pdb<br>
+ExploraFits.runtimeconfig.json<br>
+idiomas.txt</p>
+<p>Pueden estar en cualquier carpeta, incluso ena una memoria USB</p>
+<p>Los ficheros de los catálogos están comprimidos en el archivo catalogos.rar de la carpeta Catalogos.</p>
+<p>Par que la aplicación pueda utilizar el catálogo HyperLEDA hay que copiar los dos ficheros siguientes:<br>
+HyperLeda_meandata_1631273210.txt<br>
+indicesHL.bin<br>
+A la misma carpeta donde estén los ficheros de la aplicación</p>
 
-Los ficheros de los catálogos están comprimidos en el archivo catalogos.rar de la carpeta Catalogos
-
-Par que la aplicación pueda utilizar el catálogo HyperLEDA hay que copiar los dos ficheros siguientes:
-HyperLeda_meandata_1631273210.txt
-indicesHL.bin
-A la misma carpeta donde estén los ficheros de la aplicación
-
-Para utilizar el cátalogo de estrellas Smithsonian hay que copiar los dos ficheros siguientes:
-indicesSAO.bin
-sao.txt
-A la misma carpeta donde estén los ficheros de la aplicación
+<p>Para utilizar el cátalogo de estrellas Smithsonian hay que copiar los dos ficheros siguientes:<br>
+indicesSAO.bin<br>
+sao.txt<br>
+A la misma carpeta donde estén los ficheros de la aplicación</p>
 
 ## Contacto: alberto@interajedrez.com
