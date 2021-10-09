@@ -8,6 +8,8 @@ ExploraFits.runtimeconfig.json
 idiomas.txt
 Pueden estar en cualquier carpeta, incluso ena una memoria USB
 
+Los ficheros de los catálogos están comprimidos en el archivo catalogos.rar de la carpeta Catalogos
+
 Par que la aplicación pueda utilizar el catálogo HyperLEDA hay que copiar los dos ficheros siguientes:
 HyperLeda_meandata_1631273210.txt
 indicesHL.bin
