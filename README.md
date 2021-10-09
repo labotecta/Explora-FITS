@@ -10,7 +10,7 @@ ExploraFits.pdb<br>
 ExploraFits.runtimeconfig.json<br>
 idiomas.txt</p>
 <p>Pueden estar en cualquier carpeta, incluso en una memoria USB</p>
-<p>Los ficheros de los catálogos están comprimidos en el archivo <strong>catalogos.rar</strong> de la carpeta **Catalogos**.</p>
+<p>Los ficheros de los catálogos están comprimidos en el archivo <strong>catalogos.rar</strong> de la carpeta <strong>Catalogos</strong>.</p>
 <p>Par que la aplicación pueda utilizar el catálogo HyperLEDA hay que copiar los dos ficheros siguientes:</p>
 <p>HyperLeda_meandata_1631273210.txt<br>
 indicesHL.bin</p>
