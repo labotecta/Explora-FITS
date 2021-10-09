@@ -1,7 +1,7 @@
 # Explora FITS
  Aplicación para explorar ficheros en formato FITS. Este formato es el estándar en astronomía
  
-# Sólo funciona en el sistema operativo Windows
+## Sólo funciona en el sistema operativo Windows
 
 <p>Los ficheros de la aplicación son los siguientes:</p>
 <p>camposHL.txt<br>
