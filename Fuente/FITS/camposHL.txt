@@ -1,0 +1,82 @@
+objname;char;;Principal name
+pgc;int;;PGC number
+objtype;char;;Type of object (G=galaxy, S=Star ...)
+al1950;double;hour;RA 1950 (hours decimal value)
+de1950;double;deg;DEC 1950 (degrees decimal value)
+al2000;double;hour;RA 2000 (hours decimal value)
+de2000;double;deg;DEC 2000 (degrees decimal value)
+l2;double;deg;Galactic longitude
+b2;double;deg;Galactic latitude
+sgl;double;deg;Supergalactic longitude
+sgb;double;deg;Supergalactic latitude
+f_astrom;char;;Precision flag on astrometry
+type;char;;Morphological type
+bar;char;;Barred galaxy (B)
+ring;char;;Galaxy with ring (R)
+multiple;char;;Multiple galaxy (M)
+compactness;char;;Compact (C) or diffuse (D)
+t;float;;Morphological type code
+e_t;float;;Actual error on t (Morphological type code)
+agnclass;char;;Activity class of AGN
+logd25;float;log(0.1 arcmin);log of apparent diameter (d25 in 0.1 arcmin)
+e_logd25;float;log(0.1 arcmin);Actual error on logd25 (log of apparent diameter in 0.1 arcmin)
+logr25;float;log;log of axis ratio (major axis/minor axis)
+e_logr25;float;log;Actual error on logr25 (log of axis ratio: major axis/minor axis)
+pa;float;deg;Major axis position angle (North Eastwards)
+brief;float;mag/arcsec2;Mean effective surface brightness
+e_brief;float;mag/arcsec2;Actual error on brief (Mean effective surface brightness)
+ut;float;mag;Total U-magnitude
+e_ut;float;mag;Actual error on ut (Total U-magnitude)
+bt;float;mag;Total B-magnitude
+e_bt;float;mag;Actual error on bt (Total B-magnitude)
+vt;float;mag;Total V-magnitude
+e_vt;float;mag;Actual error on vt (Total V-magnitude)
+it;float;mag;Total I-magnitude
+e_it;float;mag;Actual error on it (Total I-magnitude)
+kt;float;mag;Total K-magnitude
+e_kt;float;mag;Actual error on kt (Total K-magnitude)
+m21;float;mag;21-cm line flux in magnitude
+e_m21;float;mag;Actual error on m21 (21-cm line flux in magnitude)
+mfir;float;mag;Far infrared magnitude
+ube;float;mag;Effective U-B color
+bve;float;mag;Effective B-V color
+vmaxg;float;km/s;Apparent maximum rotation velocity of gas
+e_vmaxg;float;km/s;Actual error on vmaxg (Apparent maximum rotation velocity of gas)
+vmaxs;float;km/s;Apparent maximum rotation velocity of stars
+e_vmaxs;float;km/s;Actual error on vmaxs (Apparent maximum rotation velocity of stars)
+vdis;float;km/s;Central velocity dispersion
+e_vdis;float;km/s;Actual error on vdis (Central velocity dispersion)
+vrad;float;km/s;Heliocentric radial velocity (cz) from radio measurement
+e_vrad;float;km/s;Actual error on vrad (Heliocentric radial velocity (cz) from radio measurement)
+vopt;float;km/s;Heliocentric radial velocity (cz) from optical measurement
+e_vopt;float;km/s;Actual error on vopt (Heliocentric radial velocity (cz) from optical measurement)
+v;float;km/s;Mean Heliocentric radial velocity (cz)
+e_v;float;km/s;Actual error on v (Mean Heliocentric radial velocity)
+ag;float;mag;Galactic extinction in B-band
+ai;float;mag;Internal extinction due to inclination in B-band
+incl;float;deg;Inclination between line of sight and polar axis of a galaxy
+a21;float;mag;21-cm self absorption
+logdc;float;log(0.1 arcmin);log of apparent corrected diameter (dc in 0.1 arcmin)
+btc;float;mag;Total apparent corrected B-magnitude
+itc;float;mag;Total apparent corrected I-magnitude
+ubtc;float;mag;Total apparent corrected U-B color
+bvtc;float;mag;Total apparent corrected B-V color
+bri25;float;mag/arcsec2;Mean surface brightness within isophote 25
+vrot;float;km/s;Maximum rotation velocity corrected for inclination
+e_vrot;float;km/s;Actual error on vrot (Maximum rotation velocity corrected for inclination)
+mg2;float;mag;Central Lick Mg2 index
+e_mg2;float;mag;Actual error on mg2( Central Lick Mg2 index )
+m21c;float;mag;Corrected 21-cm line flux in magnitude
+hic;float;mag;21-cm index btc-m21c in magnitude
+vlg;float;km/s;Radial velocity (cz) with respect to the Local Group
+vgsr;float;km/s;Radial velocity (cz) with respect to the GSR
+vvir;float;km/s;Radial velocity (cz) corrected for LG infall onto Virgo
+v3k;float;km/s;Radial velocity (cz) with respect to the CMB radiation
+modz;float;mag;Cosmological distance modulus (from vvir with ΛCDM)
+e_modz;float;mag;Actual error on modz (Cosmological distance modulus from vvir with ΛCDM)
+mod0;float;mag;Distance modulus from distance measurements
+e_mod0;float;mag;Actual error on mod0 (Distance modulus from distance measurements)
+modbest;float;mag;Best distance modulus, combining mod0 and modz
+e_modbest;float;mag;Actual error on modbest (Best distance modulus, combining mod0 and modz)
+mabs;float;mag;Absolute B-band magnitude
+e_mabs;float;mag;Actual error onAbsolute B-band magnitude
