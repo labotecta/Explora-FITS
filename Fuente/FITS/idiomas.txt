@@ -111,6 +111,7 @@
 0;107;"bytes"
 0;108;"Los ficheros cubren zonas disjuntas"
 0;109;"Escritos"
+0;110;"No coinciden los bytes leidos {0} con la dimensión de la fila {1}"
 //
 // Language 1
 //
@@ -224,3 +225,4 @@
 1;107;"bytes"
 1;108;"Files cover disjoint areas"
 1;109;"Writings"
+1;110;"The bytes read {0} do not match the dimension of the row {1}"

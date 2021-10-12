@@ -28,6 +28,7 @@ namespace ExploraFITS
             public int puntero_ini;
             public int n_imagenes;
             public int n_tablas;
+            public int byPorDato;
             public int clase_dato;
             public int conjunto;
             public bool normalizar;
@@ -158,6 +159,8 @@ namespace ExploraFITS
         */
         public string[] TFORM; // Formato (Fortran)
         public string[] TUNIT; // Rotulo de unidades
+        private const int MAX_COL = 512;
+        private readonly int[] des_columna = new int[MAX_COL];
 
         private readonly SortedList<string, string> parametros = new SortedList<string, string>();
 
@@ -173,6 +176,8 @@ namespace ExploraFITS
          double: A quiet NaN is represented by any bit pattern between X'7FF80000 00000000' and X'7FFFFFFF FFFFFFFF' or
          between X'FFF80000 00000000' and X'FFFFFFFF FFFFFFFF'
         */
+
+        // Habría que sustituirlos por hdu[ihdu].
 
         public int tipoDato;
         public int byPorDato;
@@ -582,38 +587,6 @@ namespace ExploraFITS
                 Console.Beep();
             }
         }
-        private void B_exporta_tabla_Click(object sender, EventArgs e)
-        {
-            if (tabla == null || tabla.RowCount == 0) return;
-            SaveFileDialog ficheroescritura = new SaveFileDialog()
-            {
-                Filter = "CSV (*.csv)|*.csv|TODO (*.*)|*.*",
-                FilterIndex = 1
-            };
-            if (ficheroescritura.ShowDialog() == DialogResult.OK)
-            {
-                FileStream fe = new FileStream(ficheroescritura.FileName, FileMode.Create, FileAccess.Write, FileShare.Read);
-                StreamWriter sw = new StreamWriter(fe, Encoding.UTF8);
-                sw.WriteLine(ficheroescritura.FileName);
-                sw.WriteLine("");
-                for (int j = 0; j < tabla.ColumnCount; j++)
-                {
-                    sw.Write(string.Format("{0};", tabla.Columns[j].Name));
-                }
-                sw.WriteLine("");
-                for (int i = 0; i < tabla.RowCount; i++)
-                {
-                    for (int j = 0; j < tabla.ColumnCount; j++)
-                    {
-                        sw.Write(string.Format("{0};", tabla.Rows[i].Cells[j].Value.ToString()));
-                    }
-                    sw.WriteLine("");
-                }
-                sw.WriteLine("");
-                sw.Close();
-                Console.Beep();
-            }
-        }
         private void B_exporta_cabeceras_Click(object sender, EventArgs e)
         {
             if (lista_cabeceras.Items.Count == 0) return;
@@ -703,7 +676,7 @@ namespace ExploraFITS
                 r_cantidad.Text = Idioma.msg[Idioma.lengua, 106];
                 r_octetos.Text = string.Format("{0:N0}", img.Height * img.Width);
                 Application.DoEvents();
-                
+
                 bool le = BitConverter.IsLittleEndian;
                 byte[] bytes_valor;
                 int contador = 0;
@@ -1200,6 +1173,7 @@ namespace ExploraFITS
                     tipoDato = 1;
                 }
                 byPorDato = Math.Abs(BITPIX / 8);
+                nueva.byPorDato = byPorDato;
                 if (tipoDato == 0 && byPorDato == 1)
                 {
                     nueva.clase_dato = 1;
@@ -1559,71 +1533,95 @@ namespace ExploraFITS
                     {
                         // Tabla
 
-                        datos = new object[NAXISn[0], NAXISn[1]];
                         int i2;
                         int i1;
-                        for (i2 = 0; i2 < NAXISn[1]; i2++)
+                        contador = 0;
+                        if (byPorDato == 1)
                         {
-                            for (i1 = 0; i1 < NAXISn[0]; i1++)
+                            datosb = new byte[NAXISn[0], NAXISn[1]];
+                            for (i2 = 0; i2 < NAXISn[1]; i2++)
                             {
-                                contador++;
-                                if (contador % 1000 == 0)
+                                for (i1 = 0; i1 < NAXISn[0]; i1++)
                                 {
-                                    v_leidos.Text = string.Format("{0:N0}", contador * byPorDato);
-                                    Application.DoEvents();
-                                }
-                                if (byPorDato == 1)
-                                {
-                                    datos[i1, i2] = octetos[puntero++];
-                                    continue;
-                                }
-
-                                // Los datos están en formato big-endian: el byte más significativo está el primero
-
-                                if (le)
-                                {
-                                    // El sistema operativo trabaja en little-endian
-                                    // Pasar los datos a little-endian
-
-                                    for (int k = byPorDato - 1; k >= 0; k--)
+                                    contador++;
+                                    if (contador % X1M == 0)
                                     {
-                                        bytesDato[k] = octetos[puntero++];
+                                        v_leidos.Text = string.Format("{0:N0}", contador);
+                                        Application.DoEvents();
                                     }
-                                }
-                                else
-                                {
-                                    for (int k = 0; k < byPorDato; k++)
-                                    {
-                                        bytesDato[k] = octetos[puntero++];
-                                    }
-                                }
-                                if (tipoDato == 0)
-                                {
-                                    datos[i1, i2] = byPorDato switch
-                                    {
-                                        2 => BitConverter.ToInt16(bytesDato),
-                                        _ => BitConverter.ToInt32(bytesDato),
-                                    };
-                                }
-                                else
-                                {
-                                    datos[i1, i2] = byPorDato switch
-                                    {
-                                        4 => BitConverter.ToSingle(bytesDato),
-                                        _ => BitConverter.ToDouble(bytesDato),
-                                    };
+                                    datosb[i1, i2] = octetos[puntero++];
                                 }
                             }
+                            if (hdu[cHDU].conjunto == 1)
+                            {
+                                TablaBinaria(datosb);
+                            }
+                            else if (hdu[cHDU].conjunto == 2)
+                            {
+                                TablaASCII(datosb);
+                            }
                         }
-                        v_leidos.Text = string.Format("{0:N0}", contador * byPorDato);
-                        Application.DoEvents();
-                        if (hdu[cHDU].conjunto == 1)
+                        else
                         {
-                            TablaBinaria(datos);
-                        }
-                        else if (hdu[cHDU].conjunto == 2)
-                        {
-                            TablaASCII(datos);
+                            datos = new object[NAXISn[0], NAXISn[1]];
+                            for (i2 = 0; i2 < NAXISn[1]; i2++)
+                            {
+                                for (i1 = 0; i1 < NAXISn[0]; i1++)
+                                {
+                                    contador++;
+                                    if (contador % X1M == 0)
+                                    {
+                                        v_leidos.Text = string.Format("{0:N0}", contador * byPorDato);
+                                        Application.DoEvents();
+                                    }
+
+                                    // Los datos están en formato big-endian: el byte más significativo está el primero
+
+                                    if (le)
+                                    {
+                                        // El sistema operativo trabaja en little-endian
+                                        // Pasar los datos a little-endian
+
+                                        for (int k = byPorDato - 1; k >= 0; k--)
+                                        {
+                                            bytesDato[k] = octetos[puntero++];
+                                        }
+                                    }
+                                    else
+                                    {
+                                        for (int k = 0; k < byPorDato; k++)
+                                        {
+                                            bytesDato[k] = octetos[puntero++];
+                                        }
+                                    }
+                                    if (tipoDato == 0)
+                                    {
+                                        datos[i1, i2] = byPorDato switch
+                                        {
+                                            2 => BitConverter.ToInt16(bytesDato),
+                                            _ => BitConverter.ToInt32(bytesDato),
+                                        };
+                                    }
+                                    else
+                                    {
+                                        datos[i1, i2] = byPorDato switch
+                                        {
+                                            4 => BitConverter.ToSingle(bytesDato),
+                                            _ => BitConverter.ToDouble(bytesDato),
+                                        };
+                                    }
+                                }
+                            }
+                            v_leidos.Text = string.Format("{0:N0}", contador * byPorDato);
+                            Application.DoEvents();
+                            if (hdu[cHDU].conjunto == 1)
+                            {
+                                TablaBinaria(datos);
+                            }
+                            else if (hdu[cHDU].conjunto == 2)
+                            {
+                                TablaASCII(datos);
+                            }
                         }
                     }
                 }
@@ -1801,6 +1799,7 @@ namespace ExploraFITS
                             TablaASCII(datos3, 0);
                         }
                     }
+                    v_leidos.Text = string.Format("{0:N0}", ndatos * byPorDato);
                 }
                 else
                 {
@@ -2449,6 +2448,759 @@ namespace ExploraFITS
             }
             return true;
         }
+
+        private void B_exporta_tabla_Click(object sender, EventArgs e)
+        {
+            if (tabla == null || tabla.RowCount == 0) return;
+            SaveFileDialog ficheroescritura = new SaveFileDialog()
+            {
+                Filter = "CSV (*.csv)|*.csv|TODO (*.*)|*.*",
+                FilterIndex = 1
+            };
+            if (ficheroescritura.ShowDialog() == DialogResult.OK)
+            {
+                Disponible(false);
+                FileStream fe = new FileStream(ficheroescritura.FileName, FileMode.Create, FileAccess.Write, FileShare.Read);
+                StreamWriter sw = new StreamWriter(fe, Encoding.UTF8);
+                sw.WriteLine(ficheroescritura.FileName);
+                sw.WriteLine("");
+                int ihdu = sel_HDU.SelectedIndex;
+                if (hdu[ihdu].conjunto == 1)
+                {
+                    if (hdu[ihdu].byPorDato == 1)
+                    {
+                        ExportaTablaBin(datosb, sw);
+                    }
+                    else
+                    {
+                        ExportaTablaBin(datos, sw);
+                    }
+                }
+                else
+                {
+                    for (int j = 0; j < tabla.ColumnCount; j++)
+                    {
+                        sw.Write(string.Format("{0};", tabla.Columns[j].Name));
+                    }
+                    sw.WriteLine("");
+                    for (int i = 0; i < tabla.RowCount; i++)
+                    {
+                        for (int j = 0; j < tabla.ColumnCount; j++)
+                        {
+                            sw.Write(string.Format("{0};", tabla.Rows[i].Cells[j].Value.ToString()));
+                        }
+                        sw.WriteLine("");
+                    }
+                    sw.WriteLine("");
+                }
+                sw.Close();
+                Disponible(true);
+                Console.Beep();
+            }
+        }
+        private void Tabla_ColumnHeaderMouseDoubleClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+
+        }
+        private void Tabla_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        {
+            int i2 = e.RowIndex;
+            int col = e.ColumnIndex;
+            int i = sel_HDU.SelectedIndex;
+            int r = hdu[i].conjunto == 2 ? 1 : SubColumnas(col);
+            if (hdu[i].conjunto == 2 || r <= 5)
+            {
+                // Clipboard
+
+                StringBuilder sb = new StringBuilder();
+                sb.AppendFormat(string.Format("{0}", tabla.Rows[i2].Cells[col].Value.ToString()));
+                Clipboard.SetText(sb.ToString());
+                Console.Beep();
+            }
+            else
+            {
+                // A fichero
+
+                SaveFileDialog ficheroescritura = new SaveFileDialog()
+                {
+                    Filter = "CSV |*.csv;*.txt|TODO |*.*",
+                    FilterIndex = 1
+                };
+                if (ficheroescritura.ShowDialog() != DialogResult.OK) return;
+                FileStream fe = new FileStream(ficheroescritura.FileName, FileMode.Create, FileAccess.Write, FileShare.Read);
+                StreamWriter sw = new StreamWriter(fe, Encoding.UTF8);
+                int i1 = i2 * NAXISn[1] + des_columna[col];
+                bool le = BitConverter.IsLittleEndian;
+                string[] elementos_celda;
+                if (byPorDato == 1)
+                {
+                    elementos_celda = ElementosCelda(le, r, datosb, col, ref i1, i2);
+                }
+                else
+                {
+                    elementos_celda = ElementosCelda(le, r, datos, col, ref i1, i2);
+                }
+                for (int ie = 0; ie < r; ie++)
+                {
+                    sw.WriteLine(elementos_celda[ie]);
+                }
+                sw.Close();
+                Console.Beep();
+            }
+        }
+        private void ExportaCabeceraBin(StreamWriter sw)
+        {
+            int r;
+            int col = 0;
+            while (col < TFIELDS)
+            {
+                r = SubColumnas(col);
+                if (r == -1) return;
+                if (TTYPE != null)
+                {
+                    if (r == 1) sw.Write(string.Format("{0};", TTYPE[col]));
+                    else
+                    {
+                        for (int ir = 0; ir < r; ir++) sw.Write(string.Format("{0}_{1};", TTYPE[col], ir + 1));
+                    }
+                }
+                else
+                {
+                    if (r == 1) sw.Write(string.Format("Col{0};", col + 1));
+                    else
+                    {
+                        for (int ir = 0; ir < r; ir++) sw.Write(string.Format("Col{0}_{1};", col + 1, ir + 1));
+                    }
+                }
+                col++;
+            }
+        }
+        private void ExportaTablaBin(object[,] datos, StreamWriter sw)
+        {
+            // Cabeceras
+
+            ExportaCabeceraBin(sw);
+
+            // Filas
+
+            int r;
+            int w;
+            int ind;
+            int i1;
+            int col;
+            StringBuilder sb;
+            bool le = BitConverter.IsLittleEndian;
+            for (int i2 = 0; i2 < NAXISn[1]; i2++)
+            {
+                i1 = 0;
+                col = 0;
+                while (col < TFIELDS)
+                {
+                    if ((ind = TFORM[col].IndexOf("L")) != -1)
+                    {
+                        // 1 byte (lógico)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 0, 1, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("X")) != -1)
+                    {
+                        // 1 bit
+
+                        r = Rep(TFORM[col], ind);
+
+                        i1++;
+                        sw.Write(string.Empty);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("B")) != -1)
+                    {
+                        // 1 byte (byte)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(datos[i1++, i2].ToString());
+                    }
+                    else if ((ind = TFORM[col].IndexOf("S")) != -1)
+                    {
+                        // 1 byte con signo (byte)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(((sbyte)datos[i1++, i2]).ToString());
+                    }
+                    else if ((ind = TFORM[col].IndexOf("I")) != -1)
+                    {
+                        // 2 bytes (entero)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 1, 2, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("U")) != -1)
+                    {
+                        // 2 bytes (entero sin signo)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 2, 2, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("J")) != -1)
+                    {
+                        // 4 bytes (entero)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 3, 4, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("V")) != -1)
+                    {
+                        // 4 bytes (entero sin signo)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 4, 4, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("K")) != -1)
+                    {
+                        // 8 bytes (entero)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 5, 8, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("E")) != -1)
+                    {
+                        // 4 bytes (simple precisión)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 6, 4, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("D")) != -1)
+                    {
+                        // 8 bytes (doble precisión)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 7, 8, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("C")) != -1)
+                    {
+                        // 8 bytes (simple precisión complejo)
+
+                        r = Rep(TFORM[col], ind);
+                        i1 += 8;
+                        sw.Write(string.Empty);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("M")) != -1)
+                    {
+                        // 16 bytes (doble precisión complejo)
+
+                        r = Rep(TFORM[col], ind);
+                        i1 += 16;
+                        sw.Write(string.Empty);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("P")) != -1)
+                    {
+                        // 8 bytes (descriptor de array)
+
+                        r = Rep(TFORM[col], ind);
+                        i1 += 8;
+                        sw.Write(string.Empty);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("A")) != -1)
+                    {
+                        // 1 bytes (caracter)
+
+                        r = Rep(TFORM[col], ind);
+                        if (ind == TFORM[col].Length - 1) w = 1;
+                        else w = Convert.ToInt32(TFORM[col][(ind + 1)..]);
+                        sb = new StringBuilder();
+                        for (int k1 = 0; k1 < r; k1++)
+                        {
+                            for (int k2 = 0; k2 < w; k2++) sb.AppendFormat("{0}", Convert.ToChar(datos[i1++, i2]));
+                            sb.Append(";");
+                        }
+                        sw.Write(sb.ToString());
+                    }
+                    else
+                    {
+                        MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 58], TFORM[col]), Idioma.msg[Idioma.lengua, 57], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    col++;
+                }
+                if (i1 != NAXISn[0])
+                {
+                    MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 110], i1, NAXISn[0]), Idioma.msg[Idioma.lengua, 57], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                sw.WriteLine();
+            }
+        }
+        private void ExportaTablaBin(byte[,] datos, StreamWriter sw)
+        {
+            // Cabeceras
+
+            ExportaCabeceraBin(sw);
+
+            // Filas
+
+            int r;
+            int w;
+            int ind;
+            int i1;
+            int col;
+            StringBuilder sb;
+            bool le = BitConverter.IsLittleEndian;
+            for (int i2 = 0; i2 < NAXISn[1]; i2++)
+            {
+                i1 = 0;
+                col = 0;
+                while (col < TFIELDS)
+                {
+                    if ((ind = TFORM[col].IndexOf("L")) != -1)
+                    {
+                        // 1 byte (lógico)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 0, 1, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("X")) != -1)
+                    {
+                        // 1 bit
+
+                        r = Rep(TFORM[col], ind);
+
+                        i1++;
+                        sw.Write(string.Empty);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("B")) != -1)
+                    {
+                        // 1 byte (byte)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(datos[i1++, i2].ToString());
+                    }
+                    else if ((ind = TFORM[col].IndexOf("S")) != -1)
+                    {
+                        // 1 byte con signo (byte)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(((sbyte)datos[i1++, i2]).ToString());
+                    }
+                    else if ((ind = TFORM[col].IndexOf("I")) != -1)
+                    {
+                        // 2 bytes (entero)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 1, 2, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("U")) != -1)
+                    {
+                        // 2 bytes (entero sin signo)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 2, 2, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("J")) != -1)
+                    {
+                        // 4 bytes (entero)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 3, 4, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("V")) != -1)
+                    {
+                        // 4 bytes (entero sin signo)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 4, 4, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("K")) != -1)
+                    {
+                        // 8 bytes (entero)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 5, 8, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("E")) != -1)
+                    {
+                        // 4 bytes (simple precisión)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 6, 4, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("D")) != -1)
+                    {
+                        // 8 bytes (doble precisión)
+
+                        r = Rep(TFORM[col], ind);
+                        sw.Write(SalidaElementoTabla(le, r, datos, 7, 8, ref i1, i2));
+                    }
+                    else if ((ind = TFORM[col].IndexOf("C")) != -1)
+                    {
+                        // 8 bytes (simple precisión complejo)
+
+                        r = Rep(TFORM[col], ind);
+                        i1 += 8;
+                        sw.Write(string.Empty);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("M")) != -1)
+                    {
+                        // 16 bytes (doble precisión complejo)
+
+                        r = Rep(TFORM[col], ind);
+                        i1 += 16;
+                        sw.Write(string.Empty);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("P")) != -1)
+                    {
+                        // 8 bytes (descriptor de array)
+
+                        r = Rep(TFORM[col], ind);
+                        i1 += 8;
+                        sw.Write(string.Empty);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("A")) != -1)
+                    {
+                        // 1 bytes (caracter)
+
+                        r = Rep(TFORM[col], ind);
+                        if (ind == TFORM[col].Length - 1) w = 1;
+                        else w = Convert.ToInt32(TFORM[col][(ind + 1)..]);
+                        sb = new StringBuilder();
+                        for (int k1 = 0; k1 < r; k1++)
+                        {
+                            for (int k2 = 0; k2 < w; k2++) sb.AppendFormat("{0}", Convert.ToChar(datos[i1++, i2]));
+                            sb.Append(";");
+                        }
+                        sw.Write(sb.ToString());
+                    }
+                    else
+                    {
+                        MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 58], TFORM[col]), Idioma.msg[Idioma.lengua, 57], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    col++;
+                }
+                if (i1 != NAXISn[0])
+                {
+                    MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 110], i1, NAXISn[0]), Idioma.msg[Idioma.lengua, 57], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                sw.WriteLine();
+            }
+        }
+        private int SubColumnas(int col)
+        {
+            int ind;
+            if ((ind = TFORM[col].IndexOf("L")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("X")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("B")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("S")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("I")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("U")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("J")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("V")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("K")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("E")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("D")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("C")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("M")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("P")) != -1) return Rep(TFORM[col], ind);
+            if ((ind = TFORM[col].IndexOf("A")) != -1) return Rep(TFORM[col], ind);
+            MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 58], TFORM[col]), Idioma.msg[Idioma.lengua, 57], MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return -1;
+        }
+        private int Rep(string s, int ind)
+        {
+            if (ind == 0)
+            {
+                return 1;
+            }
+            else
+            {
+                return Convert.ToInt32(s.Substring(0, ind));
+            }
+        }
+        private void AddElementoCadena(StringBuilder sbr, int tipo, byte[] sec_bytes)
+        {
+            switch (tipo)
+            {
+                case 0:
+                    sbr.AppendFormat("{0} ", BitConverter.ToBoolean(sec_bytes));
+                    break;
+                case 1:
+                    sbr.AppendFormat("{0} ", BitConverter.ToInt16(sec_bytes));
+                    break;
+                case 2:
+                    sbr.AppendFormat("{0} ", BitConverter.ToUInt16(sec_bytes));
+                    break;
+                case 3:
+                    sbr.AppendFormat("{0} ", BitConverter.ToInt32(sec_bytes));
+                    break;
+                case 4:
+                    sbr.AppendFormat("{0} ", BitConverter.ToUInt32(sec_bytes));
+                    break;
+                case 5:
+                    sbr.AppendFormat("{0} ", BitConverter.ToInt64(sec_bytes));
+                    break;
+                case 6:
+                    sbr.AppendFormat("{0} ", BitConverter.ToSingle(sec_bytes));
+                    break;
+                case 7:
+                    sbr.AppendFormat("{0} ", BitConverter.ToDouble(sec_bytes));
+                    break;
+                default:
+                    sbr.Append(" ");
+                    break;
+            }
+        }
+        private void SalElementoCadena(StringBuilder sbr, int tipo, byte[] sec_bytes)
+        {
+            switch (tipo)
+            {
+                case 0:
+                    sbr.AppendFormat("{0};", BitConverter.ToBoolean(sec_bytes));
+                    break;
+                case 1:
+                    sbr.AppendFormat("{0};", BitConverter.ToInt16(sec_bytes));
+                    break;
+                case 2:
+                    sbr.AppendFormat("{0};", BitConverter.ToUInt16(sec_bytes));
+                    break;
+                case 3:
+                    sbr.AppendFormat("{0};", BitConverter.ToInt32(sec_bytes));
+                    break;
+                case 4:
+                    sbr.AppendFormat("{0};", BitConverter.ToUInt32(sec_bytes));
+                    break;
+                case 5:
+                    sbr.AppendFormat("{0};", BitConverter.ToInt64(sec_bytes));
+                    break;
+                case 6:
+                    sbr.AppendFormat("{0};", BitConverter.ToSingle(sec_bytes));
+                    break;
+                case 7:
+                    sbr.AppendFormat("{0};", BitConverter.ToDouble(sec_bytes));
+                    break;
+                default:
+                    sbr.Append(";");
+                    break;
+            }
+        }
+        private string CadenaElementoTabla(bool le, int r, object[,] datos, int tipo, int lon, ref int i1, int i2)
+        {
+            byte[] sec_bytes = new byte[lon];
+            StringBuilder sbr = new StringBuilder();
+            int ir = 0;
+            while (true)
+            {
+                if (le)
+                {
+                    for (int k = lon - 1; k >= 0; k--) sec_bytes[k] = (byte)datos[i1++, i2];
+                }
+                else
+                {
+                    for (int k = 0; k < lon; k++) sec_bytes[k] = (byte)datos[i1++, i2];
+                }
+                AddElementoCadena(sbr, tipo, sec_bytes);
+                ir++;
+                if (ir == r) break;
+                if (r > 5)
+                {
+                    sbr.AppendFormat("... [{0}] ... ", r - 2);
+                    ir = r - 1;
+                    i1 += (r - 2) * lon;
+                }
+            }
+
+            // Eliminar el último " "
+
+            return sbr.ToString().Substring(0, sbr.Length - 1);
+        }
+        private string CadenaElementoTabla(bool le, int r, byte[,] datos, int tipo, int lon, ref int i1, int i2)
+        {
+            byte[] sec_bytes = new byte[lon];
+            StringBuilder sbr = new StringBuilder();
+            int ir = 0;
+            while (true)
+            {
+                if (le)
+                {
+                    for (int k = lon - 1; k >= 0; k--) sec_bytes[k] = datos[i1++, i2];
+                }
+                else
+                {
+                    for (int k = 0; k < lon; k++) sec_bytes[k] = datos[i1++, i2];
+                }
+                AddElementoCadena(sbr, tipo, sec_bytes);
+                ir++;
+                if (ir == r) break;
+                if (r > 5)
+                {
+                    sbr.AppendFormat("... [{0}] ... ", r - 2);
+                    ir = r - 1;
+                    i1 += (r - 2) * lon;
+                }
+            }
+
+            // Eliminar el último " "
+
+            return sbr.ToString().Substring(0, sbr.Length - 1);
+        }
+        private string[] ElementosCeldaTipo(bool le, int r, object[,] datos, int tipo, int lon, ref int i1, int i2)
+        {
+            int ne = 0;
+            string[] elementos = new string[r];
+            byte[] doble = new byte[lon];
+            int ir = 0;
+            while (true)
+            {
+                if (le)
+                {
+                    for (int k = lon - 1; k >= 0; k--) doble[k] = (byte)datos[i1++, i2];
+                }
+                else
+                {
+                    for (int k = 0; k < lon; k++) doble[k] = (byte)datos[i1++, i2];
+                }
+                elementos[ne++] = tipo switch
+                {
+                    0 => BitConverter.ToBoolean(doble).ToString(),
+                    1 => BitConverter.ToInt16(doble).ToString(),
+                    2 => BitConverter.ToUInt16(doble).ToString(),
+                    3 => BitConverter.ToInt32(doble).ToString(),
+                    4 => BitConverter.ToUInt32(doble).ToString(),
+                    5 => BitConverter.ToInt64(doble).ToString(),
+                    6 => BitConverter.ToSingle(doble).ToString(),
+                    7 => BitConverter.ToDouble(doble).ToString(),
+                    _ => "0",
+                };
+                ir++;
+                if (ir == r) break;
+            }
+            return elementos;
+        }
+        private string[] ElementosCeldaTipo(bool le, int r, byte[,] datos, int tipo, int lon, ref int i1, int i2)
+        {
+            int ne = 0;
+            string[] elementos = new string[r];
+            byte[] doble = new byte[lon];
+            int ir = 0;
+            while (true)
+            {
+                if (le)
+                {
+                    for (int k = lon - 1; k >= 0; k--) doble[k] = datos[i1++, i2];
+                }
+                else
+                {
+                    for (int k = 0; k < lon; k++) doble[k] = datos[i1++, i2];
+                }
+                elementos[ne++] = tipo switch
+                {
+                    0 => BitConverter.ToBoolean(doble).ToString(),
+                    1 => BitConverter.ToInt16(doble).ToString(),
+                    2 => BitConverter.ToUInt16(doble).ToString(),
+                    3 => BitConverter.ToInt32(doble).ToString(),
+                    4 => BitConverter.ToUInt32(doble).ToString(),
+                    5 => BitConverter.ToInt64(doble).ToString(),
+                    6 => BitConverter.ToSingle(doble).ToString(),
+                    7 => BitConverter.ToDouble(doble).ToString(),
+                    _ => "0",
+                };
+                ir++;
+                if (ir == r) break;
+            }
+            return elementos;
+        }
+        private string[] ElementosCelda(bool le, int r, object[,] datos, int col, ref int i1, int i2)
+        {
+            int ind;
+            string[] elementos_fila_columna = new string[1];
+            if ((ind = TFORM[col].IndexOf("L")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 0, 1, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("I")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 1, 2, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("U")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 2, 2, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("J")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 3, 4, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("V")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 4, 4, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("K")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 5, 8, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("E")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 6, 4, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("D")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 7, 8, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("A")) != -1)
+            {
+                int w = ind == TFORM[col].Length - 1 ? 1 : Convert.ToInt32(TFORM[col][(ind + 1)..]);
+                elementos_fila_columna = new string[r];
+                StringBuilder sb;
+                for (int k1 = 0; k1 < r; k1++)
+                {
+                    sb = new StringBuilder();
+                    for (int k2 = 0; k2 < w; k2++) sb.AppendFormat("{0}", Convert.ToChar(this.datos[i1++, i2]));
+                    elementos_fila_columna[k1] = sb.ToString();
+                }
+            }
+            return elementos_fila_columna;
+        }
+        private string[] ElementosCelda(bool le, int r, byte[,] datos, int col, ref int i1, int i2)
+        {
+            int ind;
+            string[] elementos_fila_columna = new string[1];
+            if ((ind = TFORM[col].IndexOf("L")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 0, 1, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("I")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 1, 2, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("U")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 2, 2, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("J")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 3, 4, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("V")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 4, 4, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("K")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 5, 8, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("E")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 6, 4, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("D")) != -1) elementos_fila_columna = ElementosCeldaTipo(le, r, datos, 7, 8, ref i1, i2);
+            else if ((ind = TFORM[col].IndexOf("A")) != -1)
+            {
+                int w = ind == TFORM[col].Length - 1 ? 1 : Convert.ToInt32(TFORM[col][(ind + 1)..]);
+                elementos_fila_columna = new string[r];
+                StringBuilder sb;
+                for (int k1 = 0; k1 < r; k1++)
+                {
+                    sb = new StringBuilder();
+                    for (int k2 = 0; k2 < w; k2++) sb.AppendFormat("{0}", Convert.ToChar(this.datos[i1++, i2]));
+                    elementos_fila_columna[k1] = sb.ToString();
+                }
+            }
+            return elementos_fila_columna;
+        }
+        private string SalidaElementoTabla(bool le, int r, byte[,] datos, int tipo, int lon, ref int i1, int i2)
+        {
+            byte[] sec_bytes = new byte[lon];
+            StringBuilder sbr = new StringBuilder();
+            int ir = 0;
+            while (true)
+            {
+                if (le)
+                {
+                    for (int k = lon - 1; k >= 0; k--) sec_bytes[k] = datos[i1++, i2];
+                }
+                else
+                {
+                    for (int k = 0; k < lon; k++) sec_bytes[k] = datos[i1++, i2];
+                }
+                SalElementoCadena(sbr, tipo, sec_bytes);
+                ir++;
+                if (ir == r) break;
+            }
+            return sbr.ToString();
+        }
+        private string SalidaElementoTabla(bool le, int r, object[,] datos, int tipo, int lon, ref int i1, int i2)
+        {
+            byte[] sec_bytes = new byte[lon];
+            StringBuilder sbr = new StringBuilder();
+            int ir = 0;
+            while (true)
+            {
+                if (le)
+                {
+                    for (int k = lon - 1; k >= 0; k--) sec_bytes[k] = (byte)datos[i1++, i2];
+                }
+                else
+                {
+                    for (int k = 0; k < lon; k++) sec_bytes[k] = (byte)datos[i1++, i2];
+                }
+                SalElementoCadena(sbr, tipo, sec_bytes);
+                ir++;
+                if (ir == r) break;
+            }
+            return sbr.ToString();
+        }
         private void TablaBinaria(object[,,] datos, int i3)
         {
             object[,] datos2 = new object[NAXISn[0], NAXISn[1]];
@@ -2460,18 +3212,6 @@ namespace ExploraFITS
                 }
             }
             TablaBinaria(datos2);
-        }
-        private void TablaASCII(object[,,] datos, int i3)
-        {
-            object[,] datos2 = new object[NAXISn[0], NAXISn[1]];
-            for (int i1 = 0; i1 < NAXISn[0]; i1++)
-            {
-                for (int i2 = 0; i1 < NAXISn[1]; i2++)
-                {
-                    datos2[i1, i2] = datos[i1, i2, i3];
-                }
-            }
-            TablaASCII(datos2);
         }
         private void TablaBinaria(object[,] datos)
         {
@@ -2490,198 +3230,106 @@ namespace ExploraFITS
                 col = 0;
                 while (col < TFIELDS)
                 {
-                    if (TFORM[col].IndexOf("L") != -1)
+                    if ((ind = TFORM[col].IndexOf("L")) != -1)
                     {
                         // 1 byte (lógico)
 
-                        byte[] cadena = new byte[1];
-                        cadena[0] = (byte)datos[i1++, i2];
-                        fila[col++] = BitConverter.ToBoolean(cadena).ToString();
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 0, 1, ref i1, i2);
                     }
-                    else if (TFORM[col].IndexOf("X") != -1)
+                    else if ((ind = TFORM[col].IndexOf("X")) != -1)
                     {
                         // 1 bit
+
+                        r = Rep(TFORM[col], ind);
 
                         i1++;
                         fila[col++] = string.Empty;
                     }
-                    else if (TFORM[col].IndexOf("B") != -1)
+                    else if ((ind = TFORM[col].IndexOf("B")) != -1)
                     {
                         // 1 byte (byte)
 
+                        r = Rep(TFORM[col], ind);
                         fila[col++] = ((byte)datos[i1++, i2]).ToString();
                     }
-                    else if (TFORM[col].IndexOf("S") != -1)
+                    else if ((ind = TFORM[col].IndexOf("S")) != -1)
                     {
                         // 1 byte con signo (byte)
 
+                        r = Rep(TFORM[col], ind);
                         fila[col++] = ((sbyte)datos[i1++, i2]).ToString();
                     }
-                    else if (TFORM[col].IndexOf("I") != -1)
+                    else if ((ind = TFORM[col].IndexOf("I")) != -1)
                     {
                         // 2 bytes (entero)
 
-                        byte[] cadena = new byte[2];
-                        if (le)
-                        {
-                            for (int k = 2 - 1; k >= 0; k--)
-                            {
-                                cadena[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        else
-                        {
-                            for (int k = 0; k < 2; k++)
-                            {
-                                cadena[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        fila[col++] = BitConverter.ToInt16(cadena).ToString();
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 1, 2, ref i1, i2);
                     }
-                    else if (TFORM[col].IndexOf("U") != -1)
+                    else if ((ind = TFORM[col].IndexOf("U")) != -1)
                     {
                         // 2 bytes (entero sin signo)
 
-                        byte[] cadena = new byte[2];
-                        if (le)
-                        {
-                            for (int k = 2 - 1; k >= 0; k--)
-                            {
-                                cadena[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        else
-                        {
-                            for (int k = 0; k < 2; k++)
-                            {
-                                cadena[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        fila[col++] = BitConverter.ToUInt16(cadena).ToString();
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 2, 2, ref i1, i2);
                     }
-                    else if (TFORM[col].IndexOf("J") != -1)
+                    else if ((ind = TFORM[col].IndexOf("J")) != -1)
                     {
                         // 4 bytes (entero)
 
-                        byte[] cadena = new byte[4];
-                        if (le)
-                        {
-                            for (int k = 4 - 1; k >= 0; k--)
-                            {
-                                cadena[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        else
-                        {
-                            for (int k = 0; k < 4; k++)
-                            {
-                                cadena[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        fila[col++] = BitConverter.ToInt32(cadena).ToString();
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 3, 4, ref i1, i2);
                     }
-                    else if (TFORM[col].IndexOf("V") != -1)
+                    else if ((ind = TFORM[col].IndexOf("V")) != -1)
                     {
                         // 4 bytes (entero sin signo)
 
-                        byte[] cadena = new byte[4];
-                        if (le)
-                        {
-                            for (int k = 4 - 1; k >= 0; k--)
-                            {
-                                cadena[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        else
-                        {
-                            for (int k = 0; k < 4; k++)
-                            {
-                                cadena[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        fila[col++] = BitConverter.ToUInt32(cadena).ToString();
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 4, 4, ref i1, i2);
                     }
-                    else if (TFORM[col].IndexOf("K") != -1)
+                    else if ((ind = TFORM[col].IndexOf("K")) != -1)
                     {
                         // 8 bytes (entero)
 
-                        byte[] cadena = new byte[8];
-                        if (le)
-                        {
-                            for (int k = 8 - 1; k >= 0; k--)
-                            {
-                                cadena[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        else
-                        {
-                            for (int k = 0; k < 8; k++)
-                            {
-                                cadena[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        fila[col++] = BitConverter.ToInt64(cadena).ToString();
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 5, 8, ref i1, i2);
                     }
-                    else if (TFORM[col].IndexOf("E") != -1)
+                    else if ((ind = TFORM[col].IndexOf("E")) != -1)
                     {
                         // 4 bytes (simple precisión)
 
-                        byte[] doble = new byte[4];
-                        if (le)
-                        {
-                            for (int k = 4 - 1; k >= 0; k--)
-                            {
-                                doble[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        else
-                        {
-                            for (int k = 0; k < 4; k++)
-                            {
-                                doble[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        fila[col++] = BitConverter.ToSingle(doble).ToString();
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 6, 4, ref i1, i2);
                     }
-                    else if (TFORM[col].IndexOf("D") != -1)
+                    else if ((ind = TFORM[col].IndexOf("D")) != -1)
                     {
                         // 8 bytes (doble precisión)
 
-                        byte[] doble = new byte[8];
-                        if (le)
-                        {
-                            for (int k = 8 - 1; k >= 0; k--)
-                            {
-                                doble[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        else
-                        {
-                            for (int k = 0; k < 8; k++)
-                            {
-                                doble[k] = (byte)datos[i1++, i2];
-                            }
-                        }
-                        fila[col++] = BitConverter.ToDouble(doble).ToString();
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 7, 8, ref i1, i2);
                     }
-                    else if (TFORM[col].IndexOf("C") != -1)
+                    else if ((ind = TFORM[col].IndexOf("C")) != -1)
                     {
                         // 8 bytes (simple precisión complejo)
 
+                        r = Rep(TFORM[col], ind);
                         i1 += 8;
                         fila[col++] = string.Empty;
                     }
-                    else if (TFORM[col].IndexOf("M") != -1)
+                    else if ((ind = TFORM[col].IndexOf("M")) != -1)
                     {
                         // 16 bytes (doble precisión complejo)
 
+                        r = Rep(TFORM[col], ind);
                         i1 += 16;
                         fila[col++] = string.Empty;
                     }
-                    else if (TFORM[col].IndexOf("P") != -1)
+                    else if ((ind = TFORM[col].IndexOf("P")) != -1)
                     {
-                        // 8 bytes (descriptos de array)
+                        // 8 bytes (descriptor de array)
 
+                        r = Rep(TFORM[col], ind);
                         i1 += 8;
                         fila[col++] = string.Empty;
                     }
@@ -2689,29 +3337,13 @@ namespace ExploraFITS
                     {
                         // 1 bytes (caracter)
 
-                        if (ind == 0)
-                        {
-                            r = 1;
-                        }
-                        else
-                        {
-                            r = Convert.ToInt32(TFORM[col].Substring(0, ind));
-                        }
-                        if (ind == TFORM[col].Length - 1)
-                        {
-                            w = 1;
-                        }
-                        else
-                        {
-                            w = Convert.ToInt32(TFORM[col][(ind + 1)..]);
-                        }
+                        r = Rep(TFORM[col], ind);
+                        if (ind == TFORM[col].Length - 1) w = 1;
+                        else w = Convert.ToInt32(TFORM[col][(ind + 1)..]);
                         sb = new StringBuilder();
-                        for (int k1 = 0; k1 < w; k1++)
+                        for (int k1 = 0; k1 < r; k1++)
                         {
-                            for (int k2 = 0; k2 < r; k2++)
-                            {
-                                sb.AppendFormat("{0}", Convert.ToChar((byte)datos[i1++, i2]));
-                            }
+                            for (int k2 = 0; k2 < w; k2++) sb.AppendFormat("{0}", Convert.ToChar((byte)datos[i1++, i2]));
                         }
                         fila[col++] = sb.ToString();
                     }
@@ -2721,9 +3353,176 @@ namespace ExploraFITS
                         return;
                     }
                 }
+                if (i1 != NAXISn[0])
+                {
+                    MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 110], i1, NAXISn[0]), Idioma.msg[Idioma.lengua, 57], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
                 tabla.Rows.Add(fila);
                 Application.DoEvents();
             }
+        }
+        private void TablaBinaria(byte[,] datos)
+        {
+            IniciaTablaBinaria();
+            int r;
+            int w;
+            int ind;
+            int i1;
+            int col;
+            StringBuilder sb;
+            string[] fila = new string[TFIELDS];
+            bool le = BitConverter.IsLittleEndian;
+            for (int i2 = 0; i2 < NAXISn[1]; i2++)
+            {
+                i1 = 0;
+                col = 0;
+                while (col < TFIELDS)
+                {
+                    des_columna[col] = i1;
+                    if ((ind = TFORM[col].IndexOf("L")) != -1)
+                    {
+                        // 1 byte (lógico)
+
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 0, 1, ref i1, i2);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("X")) != -1)
+                    {
+                        // 1 bit
+
+                        r = Rep(TFORM[col], ind);
+
+                        i1++;
+                        fila[col++] = string.Empty;
+                    }
+                    else if ((ind = TFORM[col].IndexOf("B")) != -1)
+                    {
+                        // 1 byte (byte)
+
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = datos[i1++, i2].ToString();
+                    }
+                    else if ((ind = TFORM[col].IndexOf("S")) != -1)
+                    {
+                        // 1 byte con signo (byte)
+
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = ((sbyte)datos[i1++, i2]).ToString();
+                    }
+                    else if ((ind = TFORM[col].IndexOf("I")) != -1)
+                    {
+                        // 2 bytes (entero)
+
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 1, 2, ref i1, i2);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("U")) != -1)
+                    {
+                        // 2 bytes (entero sin signo)
+
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 2, 2, ref i1, i2);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("J")) != -1)
+                    {
+                        // 4 bytes (entero)
+
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 3, 4, ref i1, i2);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("V")) != -1)
+                    {
+                        // 4 bytes (entero sin signo)
+
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 4, 4, ref i1, i2);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("K")) != -1)
+                    {
+                        // 8 bytes (entero)
+
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 5, 8, ref i1, i2);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("E")) != -1)
+                    {
+                        // 4 bytes (simple precisión)
+
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 6, 4, ref i1, i2);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("D")) != -1)
+                    {
+                        // 8 bytes (doble precisión)
+
+                        r = Rep(TFORM[col], ind);
+                        fila[col++] = CadenaElementoTabla(le, r, datos, 7, 8, ref i1, i2);
+                    }
+                    else if ((ind = TFORM[col].IndexOf("C")) != -1)
+                    {
+                        // 8 bytes (simple precisión complejo)
+
+                        r = Rep(TFORM[col], ind);
+                        i1 += 8;
+                        fila[col++] = string.Empty;
+                    }
+                    else if ((ind = TFORM[col].IndexOf("M")) != -1)
+                    {
+                        // 16 bytes (doble precisión complejo)
+
+                        r = Rep(TFORM[col], ind);
+                        i1 += 16;
+                        fila[col++] = string.Empty;
+                    }
+                    else if ((ind = TFORM[col].IndexOf("P")) != -1)
+                    {
+                        // 8 bytes (descriptor de array)
+
+                        r = Rep(TFORM[col], ind);
+                        i1 += 8;
+                        fila[col++] = string.Empty;
+                    }
+                    else if ((ind = TFORM[col].IndexOf("A")) != -1)
+                    {
+                        // 1 bytes (caracter)
+
+                        r = Rep(TFORM[col], ind);
+                        if (ind == TFORM[col].Length - 1) w = 1;
+                        else w = Convert.ToInt32(TFORM[col][(ind + 1)..]);
+                        sb = new StringBuilder();
+                        for (int k1 = 0; k1 < r; k1++)
+                        {
+                            for (int k2 = 0; k2 < w; k2++) sb.AppendFormat("{0}", Convert.ToChar(datos[i1++, i2]));
+                        }
+                        fila[col++] = sb.ToString();
+                    }
+                    else
+                    {
+                        MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 58], TFORM[col]), Idioma.msg[Idioma.lengua, 57], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                }
+                if (i1 != NAXISn[0])
+                {
+                    MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 110], i1, NAXISn[0]), Idioma.msg[Idioma.lengua, 57], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                tabla.Rows.Add(fila);
+                Application.DoEvents();
+            }
+        }
+        private void TablaASCII(object[,,] datos, int i3)
+        {
+            object[,] datos2 = new object[NAXISn[0], NAXISn[1]];
+            for (int i1 = 0; i1 < NAXISn[0]; i1++)
+            {
+                for (int i2 = 0; i1 < NAXISn[1]; i2++)
+                {
+                    datos2[i1, i2] = datos[i1, i2, i3];
+                }
+            }
+            TablaASCII(datos2);
         }
         private void TablaASCII(object[,] datos)
         {
@@ -2737,6 +3536,27 @@ namespace ExploraFITS
                 for (int i1 = 0; i1 < NAXISn[0]; i1++)
                 {
                     sb.AppendFormat("{0}", Convert.ToChar((byte)datos[i1, i2]));
+                }
+                s = sb.ToString();
+                for (int i = 0; i < TFIELDS; i++)
+                {
+                    fila[i] = s.Substring(TBCOL[i] - 1, TBCOL[i + 1] - TBCOL[i]).Trim();
+                }
+                tabla.Rows.Add(fila);
+            }
+        }
+        private void TablaASCII(byte[,] datos)
+        {
+            IniciaTablaASCII();
+            string[] fila = new string[TFIELDS];
+            StringBuilder sb;
+            string s;
+            for (int i2 = 0; i2 < NAXISn[1]; i2++)
+            {
+                sb = new StringBuilder();
+                for (int i1 = 0; i1 < NAXISn[0]; i1++)
+                {
+                    sb.AppendFormat("{0}", Convert.ToChar(datos[i1, i2]));
                 }
                 s = sb.ToString();
                 for (int i = 0; i < TFIELDS; i++)
@@ -2826,6 +3646,7 @@ namespace ExploraFITS
             }
             tabla.RowCount = 0;
         }
+
         private void B_indexar_hiperleda_Click(object sender, EventArgs e)
         {
             if (File.Exists(Path.Combine(sendaApp, "indicesHL.bin")))
@@ -3623,7 +4444,10 @@ namespace ExploraFITS
             invertir_y.Checked = hdu[i].invertir_y;
             invertir_x.Checked = hdu[i].invertir_x;
             alta_resolucion.Checked = hdu[i].alta_resolucion;
-            if (LeeHDU(i, hdu[i].puntero_ini))
+            Disponible(false);
+            bool res = LeeHDU(i, hdu[i].puntero_ini);
+            Disponible(true);
+            if (res)
             {
                 sel_HDU_ok.Text = "OK";
                 if (hdu[i].n_imagenes > 0)
@@ -4589,5 +5413,6 @@ namespace ExploraFITS
             }
             return su;
         }
+
     }
 }
