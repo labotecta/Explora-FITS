@@ -132,7 +132,6 @@ namespace ExploraFITS
             this.tabla.Size = new System.Drawing.Size(979, 196);
             this.tabla.TabIndex = 13;
             this.tabla.CellDoubleClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.Tabla_CellDoubleClick);
-            this.tabla.ColumnHeaderMouseDoubleClick += new System.Windows.Forms.DataGridViewCellMouseEventHandler(this.Tabla_ColumnHeaderMouseDoubleClick);
             // 
             // v_leidos
             // 

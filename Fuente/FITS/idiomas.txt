@@ -112,6 +112,10 @@
 0;108;"Los ficheros cubren zonas disjuntas"
 0;109;"Escritos"
 0;110;"No coinciden los bytes leidos {0} con la dimensión de la fila {1}"
+0;111;"Espectro"
+0;112;"{0} en el eje X"
+0;113;"Encontrados {0} picos"
+0;114;"Buscar picos"
 //
 // Language 1
 //
@@ -226,3 +230,7 @@
 1;108;"Files cover disjoint areas"
 1;109;"Writings"
 1;110;"The bytes read {0} do not match the dimension of the row {1}"
+1;111;"Espectrum"
+1;112;"{0} on X axis"
+1;113;"found {0} peaks"
+1;114;"Search for peaks"

@@ -160,6 +160,17 @@ namespace ExploraFITS
                 this.m = m;
             }
         }
+        public class Pico
+        {
+            public int indice;
+            public double valor;
+            public Pico(int indice, double valor)
+            {
+                this.indice = indice;
+                this.valor = valor;
+            }
+        }
+        public List<Pico> picos = null;
 
         public Form2()
         {
@@ -171,6 +182,9 @@ namespace ExploraFITS
             int ancho = ClientSize.Width;
             int alto = ClientSize.Height;
             int sup = b_volver.Location.Y;
+
+            // Interfaz imagen
+
             b_volver.Location = new Point(ancho - b_volver.Width - 4, sup);
             b_salvar.Location = new Point(b_volver.Location.X - b_redibuja.Width - 4, sup);
             b_redibuja.Location = new Point(b_salvar.Location.X - b_redibuja.Width - 4, sup);
@@ -194,18 +208,48 @@ namespace ExploraFITS
             de_catalogo_2.Location = new Point(b_ficha_sao.Location.X - de_catalogo_2.Width - 4, r_nombre_marca_2.Location.Y + r_nombre_marca_2.Height + 12);
             ar_catalogo_2.Location = new Point(de_catalogo_2.Location.X - ar_catalogo_2.Width - 4, r_nombre_marca_2.Location.Y + r_nombre_marca_2.Height + 12);
 
-            b_salva_cimas.Visible = false;
-            CambiaIdioma();
+            // Interfaz espectro
+
+            b_limpiar.Location = new Point(b_redibuja.Location.X - b_limpiar.Width - 4, sup);
+            b_picos.Location = new Point(b_limpiar.Location.X - b_picos.Width - 4, sup);
+            v_hueco.Location = new Point(b_picos.Location.X - v_hueco.Width - 4, sup + 6);
+            v_z.Location = new Point(v_hueco.Location.X - v_z.Width - 4, sup + 6);
+            lista_elegidas.Location = new Point(v_z.Location.X - lista_elegidas.Width - 4, sup + 6);
+            lista_elegibles.Location = new Point(lista_elegidas.Location.X - lista_elegibles.Width - 4, sup + 6);
+
+            // Lienzo
+
             int m_sup = b_ver_crpix.Location.Y + b_ver_crpix.Size.Height + 4;
             int m_izq = v_sup_y.Location.X + v_sup_y.Size.Width + 4;
             ancho_lienzo = ancho - m_izq - 4 - r_nombre_marca_1.Width - 8;
             alto_lienzo = alto - m_sup - 8;
             lienzo.Location = new Point(m_izq, m_sup);
             lienzo.Size = new Size(ancho_lienzo, alto_lienzo);
+
             r_y.Text = string.Empty;
-            r_y.Refresh();
+            /*r_y.Refresh();
             r_nombre_marca_1.Text = string.Empty;
-            r_nombre_marca_2.Text = string.Empty;
+            r_nombre_marca_2.Text = string.Empty;*/
+
+            IniciaControles();
+            LeeEspectros();
+            CambiaIdioma();
+        }
+        public void LeeEspectros()
+        {
+            FileStream fe = new FileStream(Path.Combine(fits.sendaApp, "espectros_atomicos.csv"), FileMode.Open, FileAccess.Read, FileShare.Read);
+            StreamReader r = new StreamReader(fe);
+            lista_elegibles.Items.Clear();
+            string linea;
+            string[] sd;
+            while (!r.EndOfStream)
+            {
+                linea = r.ReadLine();
+                sd = linea.Split(';');
+                lista_elegibles.Items.Add(string.Format("{0,10:f3}  {1}", sd[2], sd[3]));
+            }
+            r.Close();
+
         }
         public void CambiaIdioma()
         {
@@ -214,9 +258,11 @@ namespace ExploraFITS
             sel_catalogo.Items.Add(Idioma.msg[Idioma.lengua, 28]);
             sel_catalogo.Items.Add(Idioma.msg[Idioma.lengua, 29]);
         }
-        public void IniciaRotulos()
+        public void IniciaControles()
         {
+            lienzo.Size = new Size(ancho_lienzo, alto_lienzo);
             r_x.Text = string.Empty;
+            r_y.Refresh();
             pixels_x.Text = string.Empty;
             pixels_y.Text = string.Empty;
             crpix_1.Text = string.Empty;
@@ -242,8 +288,54 @@ namespace ExploraFITS
             de_catalogo_2.Text = string.Empty;
             marca_sel[1] = -1;
             r_nombre_marca_2.Text = string.Empty;
+
+            label1.Visible = false;
             b_salva_cimas.Visible = false;
+            b_ver_crpix.Visible = false;
+            v_reduccion.Visible = false;
+            v_margen_brillo.Visible = false;
+            v_brillo.Visible = false;
+            b_cimas.Visible = false;
+            sel_catalogo.Visible = false;
+            b_ficha_hyperleda.Visible = false;
+            b_ficha_sao.Visible = false;
+            b_escalar.Visible = false;
+            b_escalar_esc.Visible = false;
+            b_escalar_ok.Visible = false;
+            b_picos.Visible = false;
+            b_limpiar.Visible = false;
+            v_hueco.Visible = false;
+            v_z.Visible = false;
+            lista_elegibles.Visible = false;
+            lista_elegidas.Visible = false;
             FinEscalar();
+        }
+        public void SelInterfaz(int cual)
+        {
+            var que = cual switch
+            {
+                0 => true,
+                _ => false,
+            };
+            label1.Visible = que;
+            b_ver_crpix.Visible = que;
+            v_reduccion.Visible = que;
+            v_margen_brillo.Visible = que;
+            v_brillo.Visible = que;
+            b_cimas.Visible = que;
+            sel_catalogo.Visible = que;
+            b_ficha_hyperleda.Visible = que;
+            b_ficha_sao.Visible = que;
+            b_escalar.Visible = que;
+            b_escalar_esc.Visible = que;
+            b_escalar_ok.Visible = que;
+
+            b_picos.Visible = !que;
+            b_limpiar.Visible = !que;
+            v_hueco.Visible = !que;
+            v_z.Visible = !que;
+            lista_elegibles.Visible = !que;
+            lista_elegidas.Visible = !que;
         }
         private void R_y_Paint(object sender, PaintEventArgs e)
         {
@@ -259,14 +351,8 @@ namespace ExploraFITS
         }
         private void B_redibuja_Click(object sender, EventArgs e)
         {
-            if (fits.NAXIS == 3)
-            {
-                Redibuja(i3);
-            }
-            else
-            {
-                Redibuja();
-            }
+            if (fits.NAXIS == 3) Redibuja(i3);
+            else Redibuja();
         }
         private void B_salvar_Click(object sender, EventArgs e)
         {
@@ -640,6 +726,29 @@ namespace ExploraFITS
             lienzo.Refresh();
             MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 78], cimas.Count), Idioma.msg[Idioma.lengua, 77], MessageBoxButtons.OK, MessageBoxIcon.Information);
             fits.Disponible(true);
+        }
+        private void B_salva_cimas_Click(object sender, EventArgs e)
+        {
+            if (cimas == null || cimas.Count == 0) return;
+            SaveFileDialog ficheroescritura = new SaveFileDialog()
+            {
+                Filter = "CSV (*.csv)|*.csv|TODO (*.*)|*.*",
+                FilterIndex = 1
+            };
+            if (ficheroescritura.ShowDialog() == DialogResult.OK)
+            {
+                FileStream fe = new FileStream(ficheroescritura.FileName, FileMode.Create, FileAccess.Write, FileShare.Read);
+                StreamWriter sw = new StreamWriter(fe, Encoding.UTF8);
+                Coordenadas coor;
+                sw.WriteLine(string.Format("{0};{1};{2};{3};{4}", "radio", "pixel x", "pixel y", "coordenada x", "coordenada y"));
+                foreach (Cima c in cimas)
+                {
+                    coor = PixelAcoordenadas(Vx(c.pixelx), Vy(c.pixely), modo_convertir_px_coor);
+                    sw.WriteLine(string.Format("{0};{1};{2};{3};{4}", c.radio, c.pixelx, c.pixely, coor.x, coor.y));
+                }
+                sw.Close();
+                Console.Beep();
+            }
         }
         private void B_ver_crpix_Click(object sender, EventArgs e)
         {
@@ -1041,6 +1150,43 @@ namespace ExploraFITS
         private void Lienzo_MouseDown(object sender, MouseEventArgs e)
         {
             if (fits.img == null) return;
+            if (fits.hdu[fits.hdu_actual].n_tablas > 0)
+            {
+                p_raton_x.Text = string.Format("{0}", e.X);
+                p_raton_y.Text = string.Format("{0}", e.Y);
+                Coordenadas ce = fits.PuntoEspectro(e.X, e.Y);
+                raton_x.Text = string.Format("{0}", ce.x);
+                raton_y.Text = string.Format("{0}", ce.y);
+
+                if (ModifierKeys.HasFlag(Keys.Control))
+                {
+                    // Añadir la línea atómica más cercana
+
+                    string linea;
+                    double xm;
+                    double xma = -1;
+                    for (int i = 0; i < lista_elegibles.Items.Count; i++)
+                    {
+                        linea = lista_elegibles.Items[i].ToString();
+                        xm = Convert.ToDouble(linea.Substring(0, 10).Trim());
+                        if (xm > ce.x)
+                        {
+                            if (Math.Abs(xm - ce.x) < Math.Abs(xma - ce.x))
+                            {
+                                lista_elegidas.Items.Add(linea);
+                            }
+                            else
+                            {
+                                lista_elegidas.Items.Add(lista_elegibles.Items[i - 1].ToString());
+                            }
+                            break;
+                        }
+                        xma = xm;
+                    }
+                    Console.Beep();
+                }
+                return;
+            }
 
             // Pixels en la imagen visualizada
 
@@ -1175,6 +1321,7 @@ namespace ExploraFITS
 
         private bool Geometria()
         {
+            SelInterfaz(0);
             escalando = false;
             escalar_n_puntos = 0;
             esperando_par = false;
@@ -3118,6 +3265,11 @@ namespace ExploraFITS
 
         public void Redibuja()
         {
+            if (fits.hdu[fits.hdu_actual].n_tablas > 0 && fits.hdu[fits.hdu_actual].conjunto == 1)
+            {
+                fits.DibujaEspectro();
+                return;
+            }
             Array.Clear(fits.histograma, 0, fits.histograma.Length);
             if (fits.NAXIS == 2)
             {
@@ -3143,6 +3295,11 @@ namespace ExploraFITS
         }
         public void Redibuja(int i3)
         {
+            if (fits.hdu[fits.hdu_actual].n_tablas > 0 && fits.hdu[fits.hdu_actual].conjunto == 1)
+            {
+                fits.DibujaEspectro();
+                return;
+            }
             Array.Clear(fits.histograma, 0, fits.histograma.Length);
             if (fits.NAXIS == 3)
             {
@@ -3164,30 +3321,6 @@ namespace ExploraFITS
                         Dibuja(fits.datosd3, true, i3);
                         break;
                 }
-            }
-        }
-
-        private void B_salva_cimas_Click(object sender, EventArgs e)
-        {
-            if (cimas == null || cimas.Count == 0) return;
-            SaveFileDialog ficheroescritura = new SaveFileDialog()
-            {
-                Filter = "CSV (*.csv)|*.csv|TODO (*.*)|*.*",
-                FilterIndex = 1
-            };
-            if (ficheroescritura.ShowDialog() == DialogResult.OK)
-            {
-                FileStream fe = new FileStream(ficheroescritura.FileName, FileMode.Create, FileAccess.Write, FileShare.Read);
-                StreamWriter sw = new StreamWriter(fe, Encoding.UTF8);
-                Coordenadas coor;
-                sw.WriteLine(string.Format("{0};{1};{2};{3};{4}", "radio", "pixel x", "pixel y", "coordenada x", "coordenada y"));
-                foreach (Cima c in cimas)
-                {
-                    coor = PixelAcoordenadas(Vx(c.pixelx), Vy(c.pixely), modo_convertir_px_coor);
-                    sw.WriteLine(string.Format("{0};{1};{2};{3};{4}", c.radio, c.pixelx, c.pixely, coor.x, coor.y));
-                }
-                sw.Close();
-                Console.Beep();
             }
         }
 
@@ -3225,6 +3358,31 @@ namespace ExploraFITS
             //double r2 = r * r;
 
             return new RegLineal(a, m);
+        }
+
+        private void Lineas_elegibles_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (lista_elegibles.SelectedItem != null && lista_elegibles.SelectedIndex >= 0) lista_elegidas.Items.Add(lista_elegibles.SelectedItem);
+        }
+        private void Lineas_elegidas_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (lista_elegidas.SelectedItem != null && lista_elegidas.SelectedIndex >= 0) lista_elegidas.Items.RemoveAt(lista_elegidas.SelectedIndex);
+        }
+        private void B_picos_Click(object sender, EventArgs e)
+        {
+            fits.BuscaPicos();
+            if (picos.Count > 0)
+            {
+                if (fits.NAXIS == 3) Redibuja(i3);
+                else Redibuja();
+            }
+        }
+        private void B_limpiar_Click(object sender, EventArgs e)
+        {
+            picos.Clear();
+            lista_elegidas.Items.Clear();
+            if (fits.NAXIS == 3) Redibuja(i3);
+            else Redibuja();
         }
     }
 }
