@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v3.1": {
-      "ExploraFits/1.0.1.4": {
+      "ExploraFits/1.0.1.5": {
         "runtime": {
           "ExploraFits.dll": {}
         }
@@ -14,7 +14,7 @@
     }
   },
   "libraries": {
-    "ExploraFits/1.0.1.4": {
+    "ExploraFits/1.0.1.5": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
