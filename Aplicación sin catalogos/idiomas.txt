@@ -116,6 +116,11 @@
 0;112;"{0} en el eje X"
 0;113;"Encontrados {0} picos"
 0;114;"Buscar picos"
+0;115;"Imagen demasiado grande"
+0;116;"No hay catálogos disponibles"
+0;117;"horas"
+0;118;"grados"
+0;119;"Hay que seleccionar un catálogo"
 //
 // Language 1
 //
@@ -234,3 +239,8 @@
 1;112;"{0} on X axis"
 1;113;"found {0} peaks"
 1;114;"Search for peaks"
+1;115;"Image too large"
+1;116;"No catalogs available"
+1;117;"horas"
+1;118;"grados"
+1;119;"You have to select a catalog"
