@@ -127,6 +127,8 @@
 0;123;"arcosegundos"
 0;124;"Margen"
 0;125;"grados"
+0;126;"El rango de la longitud de onda es cero"
+0;127;"El rango del flujo es cero"
 //
 // Language 1
 //
@@ -256,3 +258,5 @@
 1;123;"second of arc"
 1;124;"Margin"
 1;125;"degree"
+1;126;"The wavelength range is zero"
+1;127;"Flow range is zero"
