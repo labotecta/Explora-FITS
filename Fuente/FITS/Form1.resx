@@ -243,6 +243,25 @@
         pzr1KgfFDc9y8LjlXQ4KAYtosPnyC0Lg7wIp3TyAuTllLkLnAAAAAElFTkSuQmCC
 </value>
   </data>
+  <data name="b_conv_espectro.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAAS
+        cwAAEnMBjCK5BwAAAJ5JREFUWEftjgsKwCAMQ73/pR0OCjHL/KBTB30QmHWNL8TNuMC/BEKY7+sC5wqo
+        x5YL8IM8myH0aLBS9RgGZyNk26q8JSNIARWkdM/nGkUBnCE8szOmlftPVZBidwqc4w6nRlWgB9WRUiIT
+        QGqLCuyxb4xiuoBhnRzm9RX1cw+4jwLcu0QggQJ4t0zA2C7AuMBnAq2cK7AKF3CBzQIxXk3YaVwK4orQ
+        AAAAAElFTkSuQmCC
+</value>
+  </data>
+  <data name="b_buscar.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAAS
+        cQAAEnEB89x6jgAAAO9JREFUWEftjsENwjAQBNMEPVMH1dFF0EY6ZMysc2cI8GCk+dm3s6xfJh2wXK7W
+        V9gNoEHnDDaABrJWwAA6WjXLUwAdmzXDQwAdaSXoXeseqYAM9C8ccQ+gj7IC/ZcjhgEzVO9sAfRJzlK5
+        ZQNeoXLvH/C7AXKWyq0tQFQ+jTgvp83srWGArBDjfcSIe4Boh1sz9OPh3v9UQEjQaO+IhwBBw04aczqe
+        AgSNOWnMSWCAoDEnjTl7bEBAgySNOVt2AwIaDQMacwbpgCw05hRvDxA0RopDAgQN9orDAgSNtopDAwQN
+        y+DwAOHGxUcCPOt6A5LPS6zUmAgTAAAAAElFTkSuQmCC
+</value>
+  </data>
   <data name="$this.Icon" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
         AAABAAEAtrYAAAEAGADQlgEAFgAAACgAAAC2AAAAbAEAAAEAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA

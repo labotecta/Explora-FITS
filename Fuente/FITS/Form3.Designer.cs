@@ -152,6 +152,7 @@ namespace ExploraFITS
             this.Name = "Form3";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Punto de referencia";
+            this.TopMost = true;
             this.Load += new System.EventHandler(this.Form3_Load);
             this.ResumeLayout(false);
             this.PerformLayout();

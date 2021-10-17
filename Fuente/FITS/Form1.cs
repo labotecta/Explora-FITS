@@ -336,6 +336,10 @@ namespace ExploraFITS
             public double maxx;
             public double miny;
             public double maxy;
+            public int mizq;
+            public int mdch;
+            public int msup;
+            public int minf;
             public double escala_x;
             public double escala_y;
             public Espectro(double[] x, double[] y)
@@ -344,20 +348,18 @@ namespace ExploraFITS
                 this.y = y;
             }
         }
-        private Espectro es_actual;
-        private const int es_mizq = 100;
-        private const int es_mdch = 100;
-        private const int es_msup = 50;
-        private const int es_minf = 100;
+        public Espectro es_actual;
         private int es_dim_x;
         private int es_dim_y;
         private int es_util_x;
         private int es_util_y;
+        public bool es_espectro;
 
         public FITS()
         {
             InitializeComponent();
         }
+
         private void Form1_Load(object sender, EventArgs e)
         {
             Assembly thisExe = Assembly.GetExecutingAssembly();
@@ -406,6 +408,7 @@ namespace ExploraFITS
             ind_color_cota_sup = 0;
             Actualiza_b_color_sup();
             b_exporta_imagen.Visible = false;
+            b_conv_espectro.Visible = false;
             b_exporta_tabla.Visible = false;
             b_exporta_cabeceras.Visible = false;
             panel_img = new Form2
@@ -483,9 +486,9 @@ namespace ExploraFITS
             b_indexar_hyperleda.Enabled = que;
             b_indexar_sao.Enabled = que;
             b_exporta_imagen.Enabled = que;
+            b_conv_espectro.Enabled = que;
             b_exporta_tabla.Enabled = que;
             b_exporta_cabeceras.Enabled = que;
-            b_exporta_tabla.Enabled = que;
             b_apilar.Enabled = que;
             b_restar.Enabled = que;
             lista_cabeceras.Enabled = que;
@@ -955,6 +958,7 @@ namespace ExploraFITS
                 sel_tabla.Items.Clear();
                 sel_HDU_ok.Text = string.Empty;
                 b_exporta_imagen.Visible = false;
+                b_conv_espectro.Visible = false;
                 b_exporta_tabla.Visible = false;
 
                 // Explora los bytes leidos
@@ -1967,6 +1971,7 @@ namespace ExploraFITS
             val_parametro.Text = string.Empty;
             tabla.ColumnCount = 0;
             b_exporta_imagen.Visible = false;
+            b_conv_espectro.Visible = false;
             b_exporta_tabla.Visible = false;
             panel_img.IniciaControles();
             Application.DoEvents();
@@ -3457,7 +3462,6 @@ namespace ExploraFITS
                     return;
                 }
                 tabla.Rows.Add(fila);
-                Application.DoEvents();
             }
         }
         private void TablaBinaria(byte[,] datos)
@@ -3700,7 +3704,7 @@ namespace ExploraFITS
                 }
                 else
                 {
-                    tabla.Columns[j].Name = string.Format("Col{0}", j + 1); ;
+                    tabla.Columns[j].Name = string.Format("Col{0}", j + 1);
                 }
             }
             tabla.RowCount = 0;
@@ -3739,7 +3743,7 @@ namespace ExploraFITS
                 }
                 else
                 {
-                    tabla.Columns[j].Name = string.Format("Col{0}", j + 1); ;
+                    tabla.Columns[j].Name = string.Format("Col{0}", j + 1);
                 }
             }
             tabla.RowCount = 0;
@@ -4356,15 +4360,16 @@ namespace ExploraFITS
 
                 if (tabla.SelectedCells.Count == 2)
                 {
-                    int fila1 = tabla.SelectedCells[0].RowIndex;
-                    int col1 = tabla.SelectedCells[0].ColumnIndex;
-                    int fila2 = tabla.SelectedCells[1].RowIndex;
-                    int col2 = tabla.SelectedCells[1].ColumnIndex;
+                    int fila1 = tabla.SelectedCells[1].RowIndex;
+                    int col1 = tabla.SelectedCells[1].ColumnIndex;
+                    int fila2 = tabla.SelectedCells[0].RowIndex;
+                    int col2 = tabla.SelectedCells[0].ColumnIndex;
                     if (fila1 != fila2) return;
                     if (col1 == col2) return;
                     int r1 = SubColumnas(col1);
                     int r2 = SubColumnas(col2);
                     if (r1 != r2) return;
+                    if (r1 < 2) return;
                     double[] elementos1;
                     double[] elementos2;
                     bool le = BitConverter.IsLittleEndian;
@@ -4396,19 +4401,55 @@ namespace ExploraFITS
         }
         public void DibujaEspectro()
         {
+            Disponible(false);
+            es_espectro = true;
+            double ancho_marca = 100;
 
             // z = (observada - emitida) / emitida
             // emitida = observada / (1 + z)
 
-            double z = panel_img.v_z.Text.Trim().Length == 0 ? 0 : Convert.ToDouble(panel_img.v_z.Text.Trim());
+            double z = panel_img.v_z.Text.Trim().Length == 0 ? 0 : Convert.ToDouble(panel_img.v_z.Text.Trim().Replace(s_millar, s_decimal));
             double inv_1mz = 1 / (1 + z);
 
             panel_img.SelInterfaz(1);
             es_util_x = es_actual.x.Length;
-            es_dim_x = es_util_x + es_mizq + es_mdch;
+
+            double factor = es_util_x / panel_img.ancho_lienzo;
+            es_actual.mizq = (int)(50 * factor);
+            es_actual.mdch = (int)(50 * factor);
+            es_actual.msup = (int)(40 * factor);
+            es_actual.minf = (int)(50 * factor);
+
+            es_dim_x = es_util_x + es_actual.mizq + es_actual.mdch;
             es_dim_y = (int)(es_dim_x * panel_img.alto_lienzo / (double)panel_img.ancho_lienzo);
-            es_util_y = es_dim_y - es_msup - es_minf;
-            img = new Bitmap(es_dim_x, es_dim_y);
+
+            // El tamaño máximo de un objeto es 2GB:2.147.483.648
+
+            factor = 4;
+            if ((double)es_dim_x * es_dim_y * factor > 2147000000.0)
+            {
+                es_dim_y = (int)(2147000000.0 / factor / es_dim_x);
+            }
+            if (es_dim_y < 500)
+            {
+                MessageBox.Show(Idioma.msg[Idioma.lengua, 115], Idioma.msg[Idioma.lengua, 111], MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Disponible(true);
+                return;
+            }
+            es_util_y = es_dim_y - es_actual.msup - es_actual.minf;
+            try
+            {
+                img = new Bitmap(es_dim_x, es_dim_y);
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(Idioma.msg[Idioma.lengua, 115] + ". " + e.Message, Idioma.msg[Idioma.lengua, 111], MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Disponible(true);
+                return;
+            }
+            Graphics g = Graphics.FromImage(img);
+            g.FillRectangle(Brushes.Black, 0, 0, es_dim_x, es_dim_y);
+
             es_actual.minx = double.MaxValue;
             es_actual.maxx = double.MinValue;
             es_actual.miny = double.MaxValue;
@@ -4421,19 +4462,18 @@ namespace ExploraFITS
                 if (es_actual.maxy < es_actual.y[i]) es_actual.maxy = es_actual.y[i];
             }
 
-            // Redondear el mínimo X a miles por defecto
+            // Redondear el X mínimo a cientos por defecto
 
-            int rx = (int)(es_actual.minx / 1000);
-            es_actual.minx = rx * 1000;
+            int rx = (int)(es_actual.minx / ancho_marca);
+            es_actual.minx = rx * ancho_marca;
 
-            // Redondear el máximo X a miles por exceso
+            // Redondear el X máximo a cientos por exceso
 
-            int ry = (int)(es_actual.maxx / 1000) + 1;
-            es_actual.maxx = ry * 1000;
+            int ry = (int)(es_actual.maxx / ancho_marca) + 1;
+            es_actual.maxx = ry * ancho_marca;
+
             double pvx = es_util_x / (es_actual.maxx - es_actual.minx);
             double pvy = es_util_y / (es_actual.maxy - es_actual.miny);
-            Graphics g = Graphics.FromImage(img);
-            g.FillRectangle(Brushes.Black, 0, 0, es_dim_x, es_dim_y);
             int px1;
             int py1;
             int px2;
@@ -4451,15 +4491,19 @@ namespace ExploraFITS
             // Eje X
 
             Font fuente = new Font("Verdana", (float)(10 * es_actual.escala_x));
-            int n_marcasx = (int)((es_actual.maxx - es_actual.minx) / 1000) + 1;
+            int n_marcasx = (int)((es_actual.maxx - es_actual.minx) / ancho_marca) + 1;
+            if (n_marcasx > 50) n_marcasx /= 10;
+            if (n_marcasx < 5) n_marcasx *= 5;
+            ancho_marca = (es_actual.maxx - es_actual.minx) / n_marcasx;
+
             double xm = es_actual.minx;
-            py1 = es_msup + es_util_y + es_minf / 2;
+            py1 = es_actual.msup + es_util_y + es_actual.minf / 2;
             for (int i = 0; i < n_marcasx; i++)
             {
                 px1 = (int)((xm - es_actual.minx) * pvx);
-                g.DrawLine(lapiz, es_mizq + px1, es_msup + es_util_y, es_mizq + px1, py1);
-                g.DrawString(string.Format("{0:N0}", xm), fuente, Brushes.White, px1, py1);
-                xm += 1000;
+                g.DrawLine(lapiz, es_actual.mizq + px1, es_actual.msup + es_util_y, es_actual.mizq + px1, py1);
+                g.DrawString(string.Format("{0:N0}", xm), fuente, Brushes.White, es_actual.mizq + px1, py1);
+                xm += ancho_marca;
             }
 
             // Cotas en el eje Y
@@ -4470,15 +4514,15 @@ namespace ExploraFITS
 
             // Mayor
 
-            g.DrawLine(lapiz_fino, es_mizq, es_msup, es_mizq + es_util_x, es_msup);
-            py1 = (int)(es_msup - (fuente.Height + 4 * es_actual.escala_y));
+            g.DrawLine(lapiz_fino, es_actual.mizq, es_actual.msup, es_actual.mizq + es_util_x, es_actual.msup);
+            py1 = (int)(es_actual.msup - (fuente.Height + 4 * es_actual.escala_y));
             if (py1 < 0) py1 = 0;
-            g.DrawString(string.Format("{0:N0}", es_actual.miny), fuente, Brushes.White, 0, py1);
+            g.DrawString(string.Format("{0:N0}", es_actual.maxy), fuente, Brushes.White, 0, py1);
 
             // Menor
 
-            g.DrawLine(lapiz_fino, es_mizq, es_msup, es_mizq + es_util_x, es_msup);
-            g.DrawString(string.Format("{0:N0}", es_actual.maxy), fuente, Brushes.White, 0, (float)(es_msup + 4 * es_actual.escala_y));
+            g.DrawLine(lapiz_fino, es_actual.mizq, es_actual.msup + es_util_y, es_actual.mizq + es_util_x, es_actual.msup + es_util_y);
+            g.DrawString(string.Format("{0:N0}", es_actual.miny), fuente, Brushes.White, 0, (float)(es_actual.msup + es_util_y + 4 * es_actual.escala_y));
 
             // Lineas atómicas
 
@@ -4493,8 +4537,8 @@ namespace ExploraFITS
                 nombre = linea[10..].Trim();
                 xm = Convert.ToDouble(linea.Substring(0, 10).Trim());
                 px1 = px2 = (int)((xm - es_actual.minx) * pvx);
-                g.DrawLine(lapiz_verde, es_mizq + px1, es_msup + py1, es_mizq + px2, es_msup);
-                if (es_mizq + px1 < ux)
+                g.DrawLine(lapiz_verde, es_actual.mizq + px1, es_actual.msup + py1, es_actual.mizq + px2, es_actual.msup);
+                if (es_actual.mizq + px1 < ux)
                 {
                     cy++;
                     if (cy == 5) cy = 0;
@@ -4505,8 +4549,8 @@ namespace ExploraFITS
                     cy = 0;
                     py2 = (int)(4 * es_actual.escala_y);
                 }
-                g.DrawString(nombre, fuente, Brushes.LightGreen, es_mizq + px1, py2);
-                ux = es_mizq + px1 + g.MeasureString(nombre, fuente).Width;
+                g.DrawString(nombre, fuente, Brushes.LightGreen, es_actual.mizq + px1, py2);
+                ux = es_actual.mizq + px1 + g.MeasureString(nombre, fuente).Width;
             }
 
             // Picos
@@ -4522,9 +4566,9 @@ namespace ExploraFITS
                     k = panel_img.picos[i].indice;
                     xm = es_actual.x[k] * inv_1mz;
                     px1 = px2 = (int)((xm - es_actual.minx) * pvx);
-                    g.DrawLine(lapiz_fino, es_mizq + px1, es_msup + py1, es_mizq + px2, es_msup);
+                    g.DrawLine(lapiz_fino, es_actual.mizq + px1, es_actual.msup + py1, es_actual.mizq + px2, es_actual.msup);
                     nombre = string.Format("{0:f3}", xm);
-                    if (es_mizq + px1 + 2 < ux)
+                    if (es_actual.mizq + px1 + 2 < ux)
                     {
                         cy++;
                         if (cy == 5) cy = 0;
@@ -4535,8 +4579,8 @@ namespace ExploraFITS
                         cy = 0;
                         py2 = py1;
                     }
-                    g.DrawString(nombre, fuente, Brushes.Red, es_mizq + px1 + 2, (float)(es_msup + py2 - fuente.Height - 4 * es_actual.escala_y)); ;
-                    ux = es_mizq + px1 + 2 + g.MeasureString(nombre, fuente).Width;
+                    g.DrawString(nombre, fuente, Brushes.Red, es_actual.mizq + px1 + 2, (float)(es_actual.msup + py2 - fuente.Height - 4 * es_actual.escala_y)); ;
+                    ux = es_actual.mizq + px1 + 2 + g.MeasureString(nombre, fuente).Width;
                 }
             }
 
@@ -4548,9 +4592,10 @@ namespace ExploraFITS
                 py1 = es_util_y - (int)((es_actual.y[i] - es_actual.miny) * pvy);
                 px2 = (int)((es_actual.x[i + 1] * inv_1mz - es_actual.minx) * pvx);
                 py2 = es_util_y - (int)((es_actual.y[i + 1] - es_actual.miny) * pvy);
-                g.DrawLine(lapiz, es_mizq + px1, es_msup + py1, es_mizq + px2, es_msup + py2);
+                g.DrawLine(lapiz, es_actual.mizq + px1, es_actual.msup + py1, es_actual.mizq + px2, es_actual.msup + py2);
             }
             panel_img.lienzo.Image = img;
+            Disponible(true);
         }
         private void AjustaLienzo()
         {
@@ -4601,8 +4646,8 @@ namespace ExploraFITS
             Form2.Coordenadas xy = new Form2.Coordenadas(0, 0);
             double pvx = es_util_x / (es_actual.maxx - es_actual.minx);
             double pvy = es_util_y / (es_actual.maxy - es_actual.miny);
-            xy.x = es_actual.minx + (px - es_mizq) / pvx;
-            xy.y = es_actual.miny + (es_util_y - (py - es_msup)) / pvy;
+            xy.x = es_actual.minx + (px - es_actual.mizq) / pvx;
+            xy.y = es_actual.miny + (es_util_y - (py - es_actual.msup)) / pvy;
             return xy;
         }
         public bool BuscaPicos()
@@ -4616,12 +4661,19 @@ namespace ExploraFITS
             }
             else
             {
-                min = Convert.ToDouble(panel_img.v_hueco.Text.Trim());
+                min = Convert.ToDouble(panel_img.v_hueco.Text.Trim().Replace(s_millar, s_decimal));
             }
             double var;
             int tendencia = es_actual.y[1] - es_actual.y[0] > 0 ? 1 : 0;    // 1 = crece
             double var_acu = tendencia == 0 ? es_actual.y[0] - es_actual.y[1] : es_actual.y[1] - es_actual.y[0];
-            panel_img.picos = new List<Form2.Pico>();
+            if (panel_img.picos == null)
+            {
+                panel_img.picos = new List<Form2.Pico>();
+            }
+            else
+            {
+                panel_img.picos.Clear();
+            }
             int i = 1;
             while (i < es_actual.x.Length)
             {
@@ -4654,7 +4706,7 @@ namespace ExploraFITS
                 }
                 i++;
             }
-            MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 113], panel_img.picos.Count), Idioma.msg[Idioma.lengua, 65], MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 113], panel_img.picos.Count), Idioma.msg[Idioma.lengua, 114], MessageBoxButtons.OK, MessageBoxIcon.Information);
             Console.Beep();
             return true;
         }
@@ -4836,6 +4888,7 @@ namespace ExploraFITS
             sel_tabla.Items.Clear();
             sel_HDU_ok.Text = "...";
             b_exporta_imagen.Visible = false;
+            b_conv_espectro.Visible = false;
             b_exporta_tabla.Visible = false;
             reloj_ar.Refresh();
             reloj_de.Refresh();
@@ -4854,6 +4907,7 @@ namespace ExploraFITS
             invertir_x.Checked = hdu[i].invertir_x;
             alta_resolucion.Checked = hdu[i].alta_resolucion;
             Disponible(false);
+            es_espectro = false;
             bool res = LeeHDU(i, hdu[i].puntero_ini);
             Disponible(true);
             if (res)
@@ -4886,6 +4940,7 @@ namespace ExploraFITS
                     b_exporta_tabla.Visible = false;
                 }
                 b_exporta_cabeceras.Visible = true;
+                b_conv_espectro.Visible = NAXISn.Length == 2 && NAXISn[1] == 1;
             }
             else
             {
@@ -5045,7 +5100,7 @@ namespace ExploraFITS
         }
         private void Reloj(PictureBox pr, Graphics g, double min, double max)
         {
-            if (NAXIS == 2 && CRVAL != null && CRVAL[0] != double.MinValue)
+            if (!es_espectro && NAXIS == 2 && NAXISn[1] != 1 && CRVAL != null && CRVAL[0] != double.MinValue)
             {
                 if (CTYPE == null)
                 {
@@ -5820,5 +5875,76 @@ namespace ExploraFITS
             return su;
         }
 
+        private void B_conv_espectro_Click(object sender, EventArgs e)
+        {
+            b_conv_espectro.Visible = false;
+            if (CRPIX == null || CRVAL == null || CDELT == null || CDELT[0] == 0)
+            {
+                es_actual = null;
+                return;
+            }
+            Disponible(false);
+            double[] elementos1 = new double[NAXISn[0]];
+            double[] elementos2 = new double[NAXISn[0]];
+            double x = CRVAL[0] - (NAXISn[1] - CRPIX[0]) * CDELT[0];
+            for (int i1 = 0; i1 < NAXISn[0]; i1++)
+            {
+                elementos1[i1] = x;
+                switch (hdu[hdu_actual].clase_dato)
+                {
+                    case 1:
+                        elementos2[i1] = datosb[i1, 0];
+                        break;
+                    case 2:
+                        elementos2[i1] = datoss[i1, 0];
+                        break;
+                    case 3:
+                        elementos2[i1] = datosi[i1, 0];
+                        break;
+                    case 4:
+                        elementos2[i1] = datosf[i1, 0];
+                        break;
+                    case 5:
+                        elementos2[i1] = datosd[i1, 0];
+                        break;
+                }
+                x += CDELT[0];
+            }
+            es_actual = new Espectro(elementos1, elementos2);
+            Disponible(true);
+            DibujaEspectro();
+        }
+
+        private void B_buscar_Click(object sender, EventArgs e)
+        {
+            Form6 f_buscar = new Form6
+            {
+                fits = this
+            };
+            double ar = 0;
+            double de = 0;
+            if (hdu != null && hdu_actual != -1 && hdu[hdu_actual].n_tablas > 0 && hdu[hdu_actual].conjunto == 1)
+            {
+                if (tabla.SelectedCells.Count == 2)
+                {
+                    int fila1 = tabla.SelectedCells[0].RowIndex;
+                    int col1 = tabla.SelectedCells[0].ColumnIndex;
+                    int fila2 = tabla.SelectedCells[1].RowIndex;
+                    int col2 = tabla.SelectedCells[1].ColumnIndex;
+                    if (fila1 == fila2 && col1 != col2)
+                    {
+                        int r1 = SubColumnas(col1);
+                        int r2 = SubColumnas(col2);
+                        if (r1 == 1 || r2 == 1)
+                        {
+                            ar = Convert.ToDouble(tabla.Rows[fila1].Cells[col2].Value.ToString());
+                            de = Convert.ToDouble(tabla.Rows[fila1].Cells[col1].Value.ToString());
+                        }
+                    }
+                }
+            }
+            f_buscar.Datos(ar, de, 10);
+            f_buscar.ShowDialog(this);
+        }
     }
 }

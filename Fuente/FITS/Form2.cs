@@ -1,7 +1,6 @@
 ﻿using ExploraFits;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -171,6 +170,11 @@ namespace ExploraFITS
             }
         }
         public List<Pico> picos = null;
+        public class Ficha
+        {
+            public string[] campos;
+            public string[] rotulos;
+        }
 
         public Form2()
         {
@@ -309,6 +313,9 @@ namespace ExploraFITS
             lista_elegibles.Visible = false;
             lista_elegidas.Visible = false;
             FinEscalar();
+            if (picos != null) picos.Clear();
+            if (cimas != null) cimas.Clear();
+            lista_elegidas.Items.Clear();
         }
         public void SelInterfaz(int cual)
         {
@@ -488,7 +495,14 @@ namespace ExploraFITS
             int[,] vecinos_descartables = new int[4 * (R_MAX + 1) * (R_MAX + 1), 2];
             byte[,] descartado = new byte[nejex, nejey];
             Array.Clear(descartado, 0, descartado.Length);
-            cimas = new List<Cima>();
+            if (cimas == null)
+            {
+                cimas = new List<Cima>();
+            }
+            else
+            {
+                cimas.Clear();
+            }
             b_salva_cimas.Visible = false;
             int ik1;
             int ik2;
@@ -835,12 +849,12 @@ namespace ExploraFITS
         {
             if (fits.NAXIS == 0 || fits.NAXISn == null || fits.NAXISn[0] == 0 || estadistica == null) return;
             if (marca_sel[0] == -1) return;
-            fits.f_ficha_hyperleda = new Form4
-            {
-                fits = fits
-            };
-            FileStream fe = new FileStream(Path.Combine(fits.sendaApp, fits.fichero_hyperleda), FileMode.Open, FileAccess.Read, FileShare.Read);
             int ind = marcas[0][marca_sel[0]].indice;
+            FichaHyperleda(ind);
+        }
+        public Ficha FichaHyperleda(int ind)
+        {
+            FileStream fe = new FileStream(Path.Combine(fits.sendaApp, fits.fichero_hyperleda), FileMode.Open, FileAccess.Read, FileShare.Read);
             fe.Seek(ind, SeekOrigin.Begin);
             byte[] linea = new byte[1024];
             int nl;
@@ -854,30 +868,34 @@ namespace ExploraFITS
             if (nl == 0 || nc == 1024)
             {
                 MessageBox.Show(Idioma.msg[Idioma.lengua, 89], Idioma.msg[Idioma.lengua, 88], MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                return null;
             }
             string s = Encoding.Default.GetString(linea, 0, nc).Trim();
-            string[] campos = s.Split(';');
-            string[] rotulos = new string[campos.Length];
+            Ficha ficha = new Ficha
+            {
+                campos = s.Split(';')
+            };
+            ficha.rotulos = new string[ficha.campos.Length];
             fe = new FileStream(Path.Combine(fits.sendaApp, "camposHL.txt"), FileMode.Open, FileAccess.Read, FileShare.Read);
             StreamReader r = new StreamReader(fe);
             nc = 0;
             while (!r.EndOfStream)
             {
-                if (nc == rotulos.Length)
+                if (nc == ficha.rotulos.Length)
                 {
                     MessageBox.Show(Idioma.msg[Idioma.lengua, 90], Idioma.msg[Idioma.lengua, 88], MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
+                    return null;
                 }
-                rotulos[nc++] = r.ReadLine();
+                ficha.rotulos[nc++] = r.ReadLine();
             }
             r.Close();
             fits.f_ficha_hyperleda = new Form4
             {
                 fits = fits
             };
-            fits.f_ficha_hyperleda.Datos(rotulos, campos);
+            fits.f_ficha_hyperleda.Datos(ficha.rotulos, ficha.campos);
             fits.f_ficha_hyperleda.ShowDialog(this);
+            return ficha;
         }
         private void B_ficha_sao_Click(object sender, EventArgs e)
         {
@@ -942,24 +960,32 @@ namespace ExploraFITS
             */
             if (fits.NAXIS == 0 || fits.NAXISn == null || fits.NAXISn[0] == 0 || estadistica == null) return;
             if (marca_sel[1] == -1) return;
-            int nc = cols_sao.Length - 1;
-            string[] campos = new string[nc];
-            FileStream fe = new FileStream(Path.Combine(fits.sendaApp, fits.fichero_sao), FileMode.Open, FileAccess.Read, FileShare.Read);
             int ind = marcas[1][marca_sel[1]].indice;
+            FichaSAO(ind);
+        }
+        public Ficha FichaSAO(int ind)
+        {
+            int nc = cols_sao.Length - 1;
+            Ficha ficha = new Ficha
+            {
+                campos = new string[nc]
+            };
+            FileStream fe = new FileStream(Path.Combine(fits.sendaApp, fits.fichero_sao), FileMode.Open, FileAccess.Read, FileShare.Read);
             fe.Seek(ind, SeekOrigin.Begin);
             byte[] linea = new byte[cols_sao[nc]];
             fe.Read(linea, 0, linea.Length);
             fe.Close();
             for (int i = 0; i < nc; i++)
             {
-                campos[i] = Encoding.Default.GetString(linea, cols_sao[i] - 1, cols_sao[i + 1] - cols_sao[i]).Trim();
+                ficha.campos[i] = Encoding.Default.GetString(linea, cols_sao[i] - 1, cols_sao[i + 1] - cols_sao[i]).Trim();
             }
             fits.f_ficha_sao = new Form5
             {
                 fits = fits
             };
-            fits.f_ficha_sao.Datos(campos);
+            fits.f_ficha_sao.Datos(ficha.campos);
             fits.f_ficha_sao.ShowDialog(this);
+            return ficha;
         }
         private void Sel_catalogo_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -1150,7 +1176,7 @@ namespace ExploraFITS
         private void Lienzo_MouseDown(object sender, MouseEventArgs e)
         {
             if (fits.img == null) return;
-            if (fits.hdu[fits.hdu_actual].n_tablas > 0)
+            if (fits.es_espectro)
             {
                 p_raton_x.Text = string.Format("{0}", e.X);
                 p_raton_y.Text = string.Format("{0}", e.Y);
@@ -1162,27 +1188,7 @@ namespace ExploraFITS
                 {
                     // Añadir la línea atómica más cercana
 
-                    string linea;
-                    double xm;
-                    double xma = -1;
-                    for (int i = 0; i < lista_elegibles.Items.Count; i++)
-                    {
-                        linea = lista_elegibles.Items[i].ToString();
-                        xm = Convert.ToDouble(linea.Substring(0, 10).Trim());
-                        if (xm > ce.x)
-                        {
-                            if (Math.Abs(xm - ce.x) < Math.Abs(xma - ce.x))
-                            {
-                                lista_elegidas.Items.Add(linea);
-                            }
-                            else
-                            {
-                                lista_elegidas.Items.Add(lista_elegibles.Items[i - 1].ToString());
-                            }
-                            break;
-                        }
-                        xma = xm;
-                    }
+                    AddLineaAtomica(ce.x);
                     Console.Beep();
                 }
                 return;
@@ -1693,7 +1699,7 @@ namespace ExploraFITS
 
             return new Marca(ind, tipo, ar, de, px, py);
         }
-        private int BuscarAR(List<FITS.IndiceCatalogo> ic, double x)
+        public int BuscarAR(List<FITS.IndiceCatalogo> ic, double x)
         {
             int medio = 0;
             int bajo = 0;
@@ -1722,7 +1728,7 @@ namespace ExploraFITS
             }
             return medio;
         }
-        private string NombreMarcaHyperleda(int ind)
+        public string NombreMarcaHyperleda(int ind)
         {
             int val;
             byte[] sb = new byte[128];
@@ -1749,7 +1755,7 @@ namespace ExploraFITS
             fe.Close();
             return Encoding.Default.GetString(sb, 0, nb);
         }
-        private string NombreMarcaSAO(int ind)
+        public string NombreMarcaSAO(int ind)
         {
             int val;
             byte[] sb = new byte[128];
@@ -3265,7 +3271,7 @@ namespace ExploraFITS
 
         public void Redibuja()
         {
-            if (fits.hdu[fits.hdu_actual].n_tablas > 0 && fits.hdu[fits.hdu_actual].conjunto == 1)
+            if (fits.es_espectro)
             {
                 fits.DibujaEspectro();
                 return;
@@ -3295,7 +3301,7 @@ namespace ExploraFITS
         }
         public void Redibuja(int i3)
         {
-            if (fits.hdu[fits.hdu_actual].n_tablas > 0 && fits.hdu[fits.hdu_actual].conjunto == 1)
+            if (fits.es_espectro)
             {
                 fits.DibujaEspectro();
                 return;
@@ -3370,19 +3376,52 @@ namespace ExploraFITS
         }
         private void B_picos_Click(object sender, EventArgs e)
         {
+            bool ctrl = ModifierKeys.HasFlag(Keys.Control);
             fits.BuscaPicos();
             if (picos.Count > 0)
             {
+                if (ctrl)
+                {
+                    foreach (Pico p in picos)
+                    {
+                        double xm = fits.es_actual.x[p.indice];
+                        AddLineaAtomica(xm);
+                    }
+                }
                 if (fits.NAXIS == 3) Redibuja(i3);
                 else Redibuja();
             }
         }
         private void B_limpiar_Click(object sender, EventArgs e)
         {
-            picos.Clear();
+            if (picos != null) picos.Clear();
             lista_elegidas.Items.Clear();
             if (fits.NAXIS == 3) Redibuja(i3);
             else Redibuja();
+        }
+        private void AddLineaAtomica(double v)
+        {
+            string linea;
+            double xm;
+            double xma = -1;
+            for (int i = 0; i < lista_elegibles.Items.Count; i++)
+            {
+                linea = lista_elegibles.Items[i].ToString();
+                xm = Convert.ToDouble(linea.Substring(0, 10).Trim());
+                if (xm > v)
+                {
+                    if (Math.Abs(xm - v) < Math.Abs(xma - v))
+                    {
+                        lista_elegidas.Items.Add(linea);
+                    }
+                    else
+                    {
+                        lista_elegidas.Items.Add(lista_elegibles.Items[i - 1].ToString());
+                    }
+                    break;
+                }
+                xma = xm;
+            }
         }
     }
 }

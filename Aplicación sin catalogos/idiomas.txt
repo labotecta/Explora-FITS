@@ -121,6 +121,12 @@
 0;117;"horas"
 0;118;"grados"
 0;119;"Hay que seleccionar un catálogo"
+0;120;"Nombre/Número"
+0;121;"AR"
+0;122;"DEC"
+0;123;"arcosegundos"
+0;124;"Margen"
+0;125;"grados"
 //
 // Language 1
 //
@@ -244,3 +250,9 @@
 1;117;"horas"
 1;118;"grados"
 1;119;"You have to select a catalog"
+1;120;"Name/Number"
+1;121;"RA"
+1;122;"DEC"
+1;123;"second of arc"
+1;124;"Margin"
+1;125;"degree"

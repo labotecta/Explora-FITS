@@ -10,9 +10,9 @@
     <Company>Labotecta. Laboratorio Técnico de Tapia de Casariego</Company>
     <PackageIcon>telescopio.png</PackageIcon>
     <PackageIconUrl />
-    <AssemblyVersion>1.0.1.4</AssemblyVersion>
-    <FileVersion>1.0.1.4</FileVersion>
-    <Version>1.0.1.4</Version>
+    <AssemblyVersion>1.0.1.6</AssemblyVersion>
+    <FileVersion>1.0.1.6</FileVersion>
+    <Version>1.0.1.6</Version>
     <Copyright>Labotecta</Copyright>
   </PropertyGroup>
 

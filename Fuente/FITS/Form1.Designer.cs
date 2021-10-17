@@ -86,6 +86,8 @@ namespace ExploraFITS
             this.b_restar = new System.Windows.Forms.Button();
             this.r_tpc_min = new System.Windows.Forms.Label();
             this.r_tpc_max = new System.Windows.Forms.Label();
+            this.b_conv_espectro = new System.Windows.Forms.Button();
+            this.b_buscar = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.tabla)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.panel_histograma)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.reloj_ar)).BeginInit();
@@ -399,7 +401,7 @@ namespace ExploraFITS
             // r_HDU
             // 
             this.r_HDU.AutoSize = true;
-            this.r_HDU.Location = new System.Drawing.Point(40, 87);
+            this.r_HDU.Location = new System.Drawing.Point(58, 87);
             this.r_HDU.Name = "r_HDU";
             this.r_HDU.Size = new System.Drawing.Size(41, 20);
             this.r_HDU.TabIndex = 59;
@@ -428,7 +430,7 @@ namespace ExploraFITS
             // r_imagen
             // 
             this.r_imagen.AutoSize = true;
-            this.r_imagen.Location = new System.Drawing.Point(40, 133);
+            this.r_imagen.Location = new System.Drawing.Point(58, 133);
             this.r_imagen.Name = "r_imagen";
             this.r_imagen.Size = new System.Drawing.Size(59, 20);
             this.r_imagen.TabIndex = 62;
@@ -437,7 +439,7 @@ namespace ExploraFITS
             // r_tabla
             // 
             this.r_tabla.AutoSize = true;
-            this.r_tabla.Location = new System.Drawing.Point(40, 176);
+            this.r_tabla.Location = new System.Drawing.Point(58, 176);
             this.r_tabla.Name = "r_tabla";
             this.r_tabla.Size = new System.Drawing.Size(44, 20);
             this.r_tabla.TabIndex = 63;
@@ -662,12 +664,34 @@ namespace ExploraFITS
             this.r_tpc_max.Text = "0";
             this.r_tpc_max.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
+            // b_conv_espectro
+            // 
+            this.b_conv_espectro.Image = ((System.Drawing.Image)(resources.GetObject("b_conv_espectro.Image")));
+            this.b_conv_espectro.Location = new System.Drawing.Point(10, 111);
+            this.b_conv_espectro.Name = "b_conv_espectro";
+            this.b_conv_espectro.Size = new System.Drawing.Size(42, 42);
+            this.b_conv_espectro.TabIndex = 87;
+            this.b_conv_espectro.UseVisualStyleBackColor = true;
+            this.b_conv_espectro.Click += new System.EventHandler(this.B_conv_espectro_Click);
+            // 
+            // b_buscar
+            // 
+            this.b_buscar.Image = ((System.Drawing.Image)(resources.GetObject("b_buscar.Image")));
+            this.b_buscar.Location = new System.Drawing.Point(901, 6);
+            this.b_buscar.Name = "b_buscar";
+            this.b_buscar.Size = new System.Drawing.Size(42, 42);
+            this.b_buscar.TabIndex = 88;
+            this.b_buscar.UseVisualStyleBackColor = true;
+            this.b_buscar.Click += new System.EventHandler(this.B_buscar_Click);
+            // 
             // FITS
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.ClientSize = new System.Drawing.Size(1002, 780);
+            this.Controls.Add(this.b_buscar);
+            this.Controls.Add(this.b_conv_espectro);
             this.Controls.Add(this.r_tpc_max);
             this.Controls.Add(this.r_tpc_min);
             this.Controls.Add(this.b_restar);
@@ -800,6 +824,8 @@ namespace ExploraFITS
         private System.Windows.Forms.Button b_restar;
         public System.Windows.Forms.Label r_tpc_min;
         public System.Windows.Forms.Label r_tpc_max;
+        private System.Windows.Forms.Button b_conv_espectro;
+        private System.Windows.Forms.Button b_buscar;
     }
 }
 

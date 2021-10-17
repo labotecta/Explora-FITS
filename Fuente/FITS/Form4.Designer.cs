@@ -65,6 +65,7 @@ namespace ExploraFits
             this.Name = "Form4";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Ficha hyperleda";
+            this.TopMost = true;
             this.Load += new System.EventHandler(this.Form4_Load);
             ((System.ComponentModel.ISupportInitialize)(this.tabla)).EndInit();
             this.ResumeLayout(false);

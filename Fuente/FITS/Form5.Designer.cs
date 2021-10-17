@@ -582,6 +582,7 @@ namespace ExploraFits
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Ficha Smithsonian AO";
+            this.TopMost = true;
             this.Load += new System.EventHandler(this.Form5_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
