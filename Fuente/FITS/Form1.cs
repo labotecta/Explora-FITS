@@ -134,8 +134,13 @@ namespace ExploraFITS
         TABLE (ASCII table)
          */
         public bool EXTEND;
-        public int PCOUNT;
-        public int GCOUNT;
+
+        // Random Access Groups. NAXIS1 es siempre 0
+        // Esta aplicación no acepta este formato, hoy se prefieren las tablas binarias.
+
+        public int PCOUNT;  // Número de parámetros
+        public int GCOUNT;  // Número de grupos
+
         public string XTENSION;
         public int TFIELDS;    // Número de campos
         public string[] TTYPE; // Nombre de columna
@@ -348,12 +353,12 @@ namespace ExploraFITS
                 this.y = y;
             }
         }
+        public bool es_espectro;
         public Espectro es_actual;
         private int es_dim_x;
         private int es_dim_y;
         private int es_util_x;
         private int es_util_y;
-        public bool es_espectro;
 
         public FITS()
         {
@@ -1291,7 +1296,7 @@ namespace ExploraFITS
                     {
                         if (!InterpretaCabecera(cHDU, linea))
                         {
-                            MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 53], cHDU, linea), Idioma.msg[Idioma.lengua, 4], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 128], cHDU, linea), Idioma.msg[Idioma.lengua, 4], MessageBoxButtons.OK, MessageBoxIcon.Error);
                             break;
                         }
                     }
@@ -1302,6 +1307,11 @@ namespace ExploraFITS
                 lista_parametros.Items.Add(p.Key);
             }
             Application.DoEvents();
+            if (GCOUNT > 0)
+            {
+                MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 53], cHDU, linea), Idioma.msg[Idioma.lengua, 4], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
 
             // Ajustar el puntero al final del último bloque de cabeceras
 
@@ -1309,27 +1319,37 @@ namespace ExploraFITS
             if (bloques_leidos * BLOQUE < puntero) bloques_leidos++;
             puntero = bloques_leidos * BLOQUE;
 
-            // Matriz CD
-
-            if (proyeccion[0] == 2 + 2 + 2 + 2)
+            if (NAXIS == 1)
             {
-                // CPRIX, CVAL, CD_1, CD_2
-
-                if (Math.Abs(CD1[1]) < 1e-20 && Math.Abs(CD2[0]) < 1e-20)
+                if (Math.Abs(CDELT[0]) < 1e-20 && Math.Abs(CD1[0]) > 1e-20)
                 {
                     CDELT[0] = CD1[0];
-                    CDELT[1] = CD2[1];
                 }
             }
-            else if (proyeccion[1] == 2 + 2 + 2)
+            else
             {
-                // CPRIX, CVAL, CDELT
+                // Matriz CD
 
-                CD1[0] = CDELT[0];
-                CD1[1] = 0;
-                CD2[0] = 0;
-                CD2[1] = CDELT[1];
-                proyeccion[0] = 2 + 2 + 2 + 2;
+                if (proyeccion[0] == 2 + 2 + 2 + 2)
+                {
+                    // CPRIX, CVAL, CD_1, CD_2
+
+                    if (Math.Abs(CD1[1]) < 1e-20 && Math.Abs(CD2[0]) < 1e-20)
+                    {
+                        CDELT[0] = CD1[0];
+                        CDELT[1] = CD2[1];
+                    }
+                }
+                else if (proyeccion[1] == 2 + 2 + 2)
+                {
+                    // CPRIX, CVAL, CDELT
+
+                    CD1[0] = CDELT[0];
+                    CD1[1] = 0;
+                    CD2[0] = 0;
+                    CD2[1] = CDELT[1];
+                    proyeccion[0] = 2 + 2 + 2 + 2;
+                }
             }
 
             // Datos
@@ -1946,6 +1966,8 @@ namespace ExploraFITS
             TFORM = null;
             TUNIT = null;
             AnulaDatos();
+            es_actual = null;
+            es_espectro = false;
 
             ctype_1.Text = string.Empty;
             ctype_2.Text = string.Empty;
@@ -3611,7 +3633,6 @@ namespace ExploraFITS
                     return;
                 }
                 tabla.Rows.Add(fila);
-                Application.DoEvents();
             }
         }
         private void TablaASCII(object[,,] datos, int i3)
@@ -4402,7 +4423,6 @@ namespace ExploraFITS
         public void DibujaEspectro()
         {
             Disponible(false);
-            es_espectro = true;
             double ancho_marca = 100;
 
             // z = (observada - emitida) / emitida
@@ -4414,7 +4434,7 @@ namespace ExploraFITS
             panel_img.SelInterfaz(1);
             es_util_x = es_actual.x.Length;
 
-            double factor = es_util_x / panel_img.ancho_lienzo;
+            double factor = (double)es_util_x / panel_img.ancho_lienzo;
             es_actual.mizq = (int)(50 * factor);
             es_actual.mdch = (int)(50 * factor);
             es_actual.msup = (int)(40 * factor);
@@ -4461,7 +4481,18 @@ namespace ExploraFITS
                 if (es_actual.miny > es_actual.y[i]) es_actual.miny = es_actual.y[i];
                 if (es_actual.maxy < es_actual.y[i]) es_actual.maxy = es_actual.y[i];
             }
-
+            if (es_actual.maxx == es_actual.minx)
+            {
+                MessageBox.Show(Idioma.msg[Idioma.lengua, 126], Idioma.msg[Idioma.lengua, 111], MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Disponible(true);
+                return;
+            }
+            if (es_actual.maxy == es_actual.miny)
+            {
+                MessageBox.Show(Idioma.msg[Idioma.lengua, 127], Idioma.msg[Idioma.lengua, 111], MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Disponible(true);
+                return;
+            }
             // Redondear el X mínimo a cientos por defecto
 
             int rx = (int)(es_actual.minx / ancho_marca);
@@ -4595,6 +4626,7 @@ namespace ExploraFITS
                 g.DrawLine(lapiz, es_actual.mizq + px1, es_actual.msup + py1, es_actual.mizq + px2, es_actual.msup + py2);
             }
             panel_img.lienzo.Image = img;
+            es_espectro = true;
             Disponible(true);
         }
         private void AjustaLienzo()
@@ -4638,6 +4670,8 @@ namespace ExploraFITS
         }
         public Form2.Coordenadas PuntoEspectro(int px, int py)
         {
+            if (es_actual == null) return null;
+
             // Pasar pixeles del lienzo a pixeles de img
 
             px = (int)(px * es_actual.escala_x);
@@ -4652,6 +4686,7 @@ namespace ExploraFITS
         }
         public bool BuscaPicos()
         {
+            if (es_actual == null) return false;
             double min;
             if (panel_img.v_hueco.Text.Trim().Length == 0)
             {
@@ -4907,6 +4942,7 @@ namespace ExploraFITS
             invertir_x.Checked = hdu[i].invertir_x;
             alta_resolucion.Checked = hdu[i].alta_resolucion;
             Disponible(false);
+            es_actual = null;
             es_espectro = false;
             bool res = LeeHDU(i, hdu[i].puntero_ini);
             Disponible(true);
@@ -5880,7 +5916,9 @@ namespace ExploraFITS
             b_conv_espectro.Visible = false;
             if (CRPIX == null || CRVAL == null || CDELT == null || CDELT[0] == 0)
             {
+                MessageBox.Show(Idioma.msg[Idioma.lengua, 130], Idioma.msg[Idioma.lengua, 129], MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 es_actual = null;
+                es_espectro = false;
                 return;
             }
             Disponible(false);
@@ -5911,8 +5949,8 @@ namespace ExploraFITS
                 x += CDELT[0];
             }
             es_actual = new Espectro(elementos1, elementos2);
-            Disponible(true);
             DibujaEspectro();
+            Disponible(true);
         }
 
         private void B_buscar_Click(object sender, EventArgs e)
