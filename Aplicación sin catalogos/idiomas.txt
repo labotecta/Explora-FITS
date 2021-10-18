@@ -129,6 +129,9 @@
 0;125;"grados"
 0;126;"El rango de la longitud de onda es cero"
 0;127;"El rango del flujo es cero"
+0;128;"Esta aplicación no admite Random Access Groups"
+0;129;"Convertir espectro a X-Y"
+0;130;"No hay datos para la escala X"
 //
 // Language 1
 //
@@ -260,3 +263,6 @@
 1;125;"degree"
 1;126;"The wavelength range is zero"
 1;127;"Flow range is zero"
+1;128;"This app does not support Random Access Groups"
+1;129;"Convert spectrum to X-Y"
+1;130;"No data for scale X"
