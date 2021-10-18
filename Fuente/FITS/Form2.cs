@@ -372,13 +372,20 @@ namespace ExploraFITS
             if (ficheroescritura.ShowDialog() == DialogResult.OK)
             {
                 fits.Disponible(false);
-                if (fits.alta_resolucion.Checked)
+                try
                 {
-                    fits.img.Save(ficheroescritura.FileName, ImageFormat.Bmp);
+                    if (fits.alta_resolucion.Checked)
+                    {
+                        fits.img.Save(ficheroescritura.FileName, ImageFormat.Bmp);
+                    }
+                    else
+                    {
+                        fits.img.Save(ficheroescritura.FileName, ImageFormat.Png);
+                    }
                 }
-                else
+                catch (Exception ee)
                 {
-                    fits.img.Save(ficheroescritura.FileName, ImageFormat.Png);
+                    MessageBox.Show(ee.Message, "Img", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
                 fits.Disponible(true);
                 Console.Beep();
@@ -815,22 +822,8 @@ namespace ExploraFITS
         }
         private void B_escalar_ok_Click(object sender, EventArgs e)
         {
-            /*
-                // CDELT[0] = (AR0 - AR1) / (p0x - p1x)
-                // CRVAL[0] = AR0 - p0x * CDELT[0]
-                
-                fits.CRPIX[0] = 0;
-                fits.CRPIX[1] = 0;
-
-                fits.CDELT[0] = (escalar_ar[0] - escalar_ar[1]) / (escalar_pixelx[0] - escalar_pixelx[1]);
-                fits.CRVAL[0] = escalar_ar[0] - escalar_pixelx[0] * fits.CDELT[0];
-
-                fits.CDELT[1] = (escalar_de[0] - escalar_de[1]) / (escalar_pixely[0] - escalar_pixely[1]);
-                fits.CRVAL[1] = escalar_de[0] - escalar_pixely[0] * fits.CDELT[1];
-            */
-
-            fits.CRPIX[0] = 0;
-            fits.CRPIX[1] = 0;
+            fits.CRPIX[0] = 1;
+            fits.CRPIX[1] = 1;
             RegLineal rl;
             rl = RegresionLineal(escalar_pixelx, escalar_ar, escalar_n_puntos);
             fits.CDELT[0] = rl.m;
@@ -1176,7 +1169,7 @@ namespace ExploraFITS
         private void Lienzo_MouseDown(object sender, MouseEventArgs e)
         {
             if (fits.img == null) return;
-            if (fits.es_espectro)
+            if (fits.es_actual != null)
             {
                 p_raton_x.Text = string.Format("{0}", e.X);
                 p_raton_y.Text = string.Format("{0}", e.Y);
@@ -3271,7 +3264,7 @@ namespace ExploraFITS
 
         public void Redibuja()
         {
-            if (fits.es_espectro)
+            if (fits.es_actual != null)
             {
                 fits.DibujaEspectro();
                 return;
@@ -3301,7 +3294,7 @@ namespace ExploraFITS
         }
         public void Redibuja(int i3)
         {
-            if (fits.es_espectro)
+            if (fits.es_actual != null)
             {
                 fits.DibujaEspectro();
                 return;
