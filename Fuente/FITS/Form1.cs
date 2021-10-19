@@ -145,7 +145,7 @@ namespace ExploraFITS
         private int axis_pendientes;
         private readonly SortedList<string, string> parametros = new SortedList<string, string>();
 
-        private int num_octetos;
+        private long num_octetos;
         private byte[] octetos;
 
         /*
@@ -401,7 +401,7 @@ namespace ExploraFITS
                 CreaCFG(FICHERO_FITS);
             }
         }
-        public void SalvaCFG()
+        public static void SalvaCFG()
         {
             Settings.Default.primeravez = false;
             Settings.Default.idioma = Idioma.lengua;
@@ -920,11 +920,36 @@ namespace ExploraFITS
 
                 // Lee a memoria todos los bytes del fichero
 
-                num_octetos = (int)fs.Length;
+                num_octetos = fs.Length;
+                if (num_octetos > 2147483591)
+                {
+                    MessageBox.Show(Idioma.msg[Idioma.lengua, 131], Idioma.msg[Idioma.lengua, 4], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    FICHERO_FITS = string.Empty;
+                    return false;
+                }
                 r_cantidad.Text = Idioma.msg[Idioma.lengua, 107];
                 r_octetos.Text = string.Format("{0:N0}", num_octetos);
                 octetos = new byte[num_octetos];
-                fs.Read(octetos, 0, num_octetos);
+                if (num_octetos < 2147483591)
+                {
+                    fs.Read(octetos, 0, (int)num_octetos);
+                }
+                else
+                {
+                    // En bloques de 1M
+
+                    int trozo_leido;
+                    const int l_trozo = 1048576;
+                    byte[] trozo = new byte[l_trozo];
+                    long ii = 0;
+                    while (ii < num_octetos)
+                    {
+                        fs.Seek(ii, SeekOrigin.Begin);
+                        trozo_leido = fs.Read(trozo, 0, l_trozo);
+                        Array.Copy(trozo, 0, octetos, ii, trozo_leido);
+                        ii += trozo_leido;
+                    }
+                }
                 fs.Close();
 
                 IniciaParametros();
@@ -1860,7 +1885,7 @@ namespace ExploraFITS
                 }
             }
         }
-        private bool ProcesaLineaCFG(StreamReader sr, string cadena, ref string valor)
+        private static bool ProcesaLineaCFG(StreamReader sr, string cadena, ref string valor)
         {
             if (sr.EndOfStream) return false;
             string linea = sr.ReadLine();
@@ -1962,7 +1987,7 @@ namespace ExploraFITS
             panel_histograma.Image = null;
             GC.Collect();
         }
-        private string LeeCabecera(byte[] octetos, ref int puntero)
+        private static string LeeCabecera(byte[] octetos, ref int puntero)
         {
             if (puntero + 80 >= octetos.Length)
             {
@@ -2571,7 +2596,7 @@ namespace ExploraFITS
                         for (int k1 = 0; k1 < r; k1++)
                         {
                             for (int k2 = 0; k2 < w; k2++) sb.AppendFormat("{0}", Convert.ToChar(datos[i1++, i2]));
-                            sb.Append(";");
+                            sb.Append(';');
                         }
                         sw.Write(sb.ToString());
                     }
@@ -2725,7 +2750,7 @@ namespace ExploraFITS
                         for (int k1 = 0; k1 < r; k1++)
                         {
                             for (int k2 = 0; k2 < w; k2++) sb.AppendFormat("{0}", Convert.ToChar(datos[i1++, i2]));
-                            sb.Append(";");
+                            sb.Append(';');
                         }
                         sw.Write(sb.ToString());
                     }
@@ -2765,7 +2790,7 @@ namespace ExploraFITS
             MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 58], TFORM[col]), Idioma.msg[Idioma.lengua, 57], MessageBoxButtons.OK, MessageBoxIcon.Error);
             return -1;
         }
-        private int Rep(string s, int ind)
+        private static int Rep(string s, int ind)
         {
             if (ind == 0)
             {
@@ -2776,7 +2801,7 @@ namespace ExploraFITS
                 return Convert.ToInt32(s.Substring(0, ind));
             }
         }
-        private void AddElementoCadena(StringBuilder sbr, int tipo, byte[] sec_bytes, string sep)
+        private static void AddElementoCadena(StringBuilder sbr, int tipo, byte[] sec_bytes, string sep)
         {
             switch (tipo)
             {
@@ -2809,7 +2834,7 @@ namespace ExploraFITS
                     break;
             }
         }
-        private string CadenaElementoTabla(bool le, int r, object[,] datos, int tipo, int lon, ref int i1, int i2)
+        private static string CadenaElementoTabla(bool le, int r, object[,] datos, int tipo, int lon, ref int i1, int i2)
         {
             byte[] sec_bytes = new byte[lon];
             StringBuilder sbr = new StringBuilder();
@@ -2839,7 +2864,7 @@ namespace ExploraFITS
 
             return sbr.ToString().Substring(0, sbr.Length - 1);
         }
-        private string CadenaElementoTabla(bool le, int r, byte[,] datos, int tipo, int lon, ref int i1, int i2)
+        private static string CadenaElementoTabla(bool le, int r, byte[,] datos, int tipo, int lon, ref int i1, int i2)
         {
             byte[] sec_bytes = new byte[lon];
             StringBuilder sbr = new StringBuilder();
@@ -2869,7 +2894,7 @@ namespace ExploraFITS
 
             return sbr.ToString().Substring(0, sbr.Length - 1);
         }
-        private string[] ElementosCeldaTipo(bool le, int r, object[,] datos, int tipo, int lon, ref int i1, int i2)
+        private static string[] ElementosCeldaTipo(bool le, int r, object[,] datos, int tipo, int lon, ref int i1, int i2)
         {
             int ne = 0;
             string[] elementos = new string[r];
@@ -2902,7 +2927,7 @@ namespace ExploraFITS
             }
             return elementos;
         }
-        private string[] ElementosCeldaTipo(bool le, int r, byte[,] datos, int tipo, int lon, ref int i1, int i2)
+        private static string[] ElementosCeldaTipo(bool le, int r, byte[,] datos, int tipo, int lon, ref int i1, int i2)
         {
             int ne = 0;
             string[] elementos = new string[r];
@@ -2987,7 +3012,7 @@ namespace ExploraFITS
             }
             return elementos_fila_columna;
         }
-        private double[] ValorElementosCeldaTipo(bool le, int r, object[,] datos, int tipo, int lon, ref int i1, int i2)
+        private static double[] ValorElementosCeldaTipo(bool le, int r, object[,] datos, int tipo, int lon, ref int i1, int i2)
         {
             int ne = 0;
             double[] elementos = new double[r];
@@ -3020,7 +3045,7 @@ namespace ExploraFITS
             }
             return elementos;
         }
-        private double[] ValorElementosCeldaTipo(bool le, int r, byte[,] datos, int tipo, int lon, ref int i1, int i2)
+        private static double[] ValorElementosCeldaTipo(bool le, int r, byte[,] datos, int tipo, int lon, ref int i1, int i2)
         {
             int ne = 0;
             double[] elementos = new double[r];
@@ -3089,7 +3114,7 @@ namespace ExploraFITS
             }
             return elementos_fila_columna;
         }
-        private string SalidaElementoTabla(bool le, int r, byte[,] datos, int tipo, int lon, ref int i1, int i2)
+        private static string SalidaElementoTabla(bool le, int r, byte[,] datos, int tipo, int lon, ref int i1, int i2)
         {
             byte[] sec_bytes = new byte[lon];
             StringBuilder sbr = new StringBuilder();
@@ -3110,7 +3135,7 @@ namespace ExploraFITS
             }
             return sbr.ToString();
         }
-        private string SalidaElementoTabla(bool le, int r, object[,] datos, int tipo, int lon, ref int i1, int i2)
+        private static string SalidaElementoTabla(bool le, int r, object[,] datos, int tipo, int lon, ref int i1, int i2)
         {
             byte[] sec_bytes = new byte[lon];
             StringBuilder sbr = new StringBuilder();
@@ -3906,7 +3931,7 @@ namespace ExploraFITS
             }
             string s = panel_img.r_x.Text;
             panel_img.r_x.ForeColor = Color.Red;
-            panel_img.r_x.Text = "Leyendo índices Hyperleda ...";
+            panel_img.r_x.Text = Idioma.msg[Idioma.lengua, 132];
             Application.DoEvents();
             FileStream fe = new FileStream(Path.Combine(sendaApp, "indicesHL.bin"), FileMode.Open, FileAccess.Read, FileShare.Read);
             if (fe != null)
@@ -3929,7 +3954,7 @@ namespace ExploraFITS
                     contador++;
                     if (contador % X1M == 0)
                     {
-                        panel_img.r_x.Text = string.Format("Leyendo índices Hyperleda  {0:N0}", contador);
+                        panel_img.r_x.Text = string.Format(Idioma.msg[Idioma.lengua, 132] + " {0:N0}", contador);
                         Application.DoEvents();
                     }
                 }
@@ -4113,7 +4138,7 @@ namespace ExploraFITS
             }
             string s = panel_img.r_x.Text;
             panel_img.r_x.ForeColor = Color.Red;
-            panel_img.r_x.Text = "Leyendo índices SAO ...";
+            panel_img.r_x.Text = Idioma.msg[Idioma.lengua, 133];
             Application.DoEvents();
             FileStream fe = new FileStream(Path.Combine(sendaApp, "indicesSAO.bin"), FileMode.Open, FileAccess.Read, FileShare.Read);
             if (fe != null)
@@ -4136,7 +4161,7 @@ namespace ExploraFITS
                     contador++;
                     if (contador % 100000 == 0)
                     {
-                        panel_img.r_x.Text = string.Format("Leyendo índices SAO  {0:N0}", contador);
+                        panel_img.r_x.Text = string.Format(Idioma.msg[Idioma.lengua, 133] + " {0:N0}", contador);
                         Application.DoEvents();
                     }
                 }
@@ -5599,7 +5624,7 @@ namespace ExploraFITS
             }
             return true;
         }
-        private bool ComparaBin(string[] ficheros)
+        private static bool ComparaBin(string[] ficheros)
         {
             FileStream fs;
             fs = new FileStream(ficheros[0], FileMode.Open, FileAccess.Read, FileShare.Read);

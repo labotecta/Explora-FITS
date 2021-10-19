@@ -132,6 +132,9 @@
 0;128;"Esta aplicación no admite Random Access Groups"
 0;129;"Convertir espectro a X-Y"
 0;130;"No hay datos para la escala X"
+0;131;"Fichero demasiado grande"
+0;132;"Leyendo índices Hyperleda"
+0;133;"Leyendo índices SAO"
 //
 // Language 1
 //
@@ -266,3 +269,6 @@
 1;128;"This app does not support Random Access Groups"
 1;129;"Convert spectrum to X-Y"
 1;130;"No data for scale X"
+1;131;"File too large"
+1;132;"Reading Hyperleda indexes"
+1;133;"Reading SAO indexes"
