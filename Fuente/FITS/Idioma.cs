@@ -7,7 +7,7 @@ namespace ExploraFits
     class Idioma
     {
         public static readonly int NUMIDIOMAS = 2;
-        public static readonly int NUMMSGIDIOMAS = 134;
+        public static readonly int NUMMSGIDIOMAS = 135;
         public static int lengua;       // 0 = Español, 1 = Inglés
         public static string[,] msg = new string[NUMIDIOMAS, NUMMSGIDIOMAS];
         public static int LeeMensajes(string s)

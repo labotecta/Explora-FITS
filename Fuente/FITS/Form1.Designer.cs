@@ -66,7 +66,6 @@ namespace ExploraFITS
             this.r_imagen = new System.Windows.Forms.Label();
             this.r_tabla = new System.Windows.Forms.Label();
             this.b_exporta_cabeceras = new System.Windows.Forms.Button();
-            this.sel_HDU_ok = new System.Windows.Forms.Label();
             this.b_nan = new System.Windows.Forms.Button();
             this.b_cota_inf = new System.Windows.Forms.Button();
             this.b_cota_sup = new System.Windows.Forms.Button();
@@ -88,6 +87,7 @@ namespace ExploraFITS
             this.r_tpc_max = new System.Windows.Forms.Label();
             this.b_conv_espectro = new System.Windows.Forms.Button();
             this.b_buscar = new System.Windows.Forms.Button();
+            this.b_exporta_fits = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.tabla)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.panel_histograma)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.reloj_ar)).BeginInit();
@@ -117,7 +117,7 @@ namespace ExploraFITS
             // b_exporta_tabla
             // 
             this.b_exporta_tabla.Image = ((System.Drawing.Image)(resources.GetObject("b_exporta_tabla.Image")));
-            this.b_exporta_tabla.Location = new System.Drawing.Point(236, 154);
+            this.b_exporta_tabla.Location = new System.Drawing.Point(236, 160);
             this.b_exporta_tabla.Name = "b_exporta_tabla";
             this.b_exporta_tabla.Size = new System.Drawing.Size(42, 42);
             this.b_exporta_tabla.TabIndex = 5;
@@ -455,15 +455,6 @@ namespace ExploraFITS
             this.b_exporta_cabeceras.UseVisualStyleBackColor = true;
             this.b_exporta_cabeceras.Click += new System.EventHandler(this.B_exporta_cabeceras_Click);
             // 
-            // sel_HDU_ok
-            // 
-            this.sel_HDU_ok.AutoSize = true;
-            this.sel_HDU_ok.Location = new System.Drawing.Point(236, 87);
-            this.sel_HDU_ok.Name = "sel_HDU_ok";
-            this.sel_HDU_ok.Size = new System.Drawing.Size(29, 20);
-            this.sel_HDU_ok.TabIndex = 65;
-            this.sel_HDU_ok.Text = "OK";
-            // 
             // b_nan
             // 
             this.b_nan.BackColor = System.Drawing.Color.Black;
@@ -617,7 +608,7 @@ namespace ExploraFITS
             // b_exporta_imagen
             // 
             this.b_exporta_imagen.Image = ((System.Drawing.Image)(resources.GetObject("b_exporta_imagen.Image")));
-            this.b_exporta_imagen.Location = new System.Drawing.Point(236, 111);
+            this.b_exporta_imagen.Location = new System.Drawing.Point(236, 117);
             this.b_exporta_imagen.Name = "b_exporta_imagen";
             this.b_exporta_imagen.Size = new System.Drawing.Size(42, 42);
             this.b_exporta_imagen.TabIndex = 82;
@@ -684,12 +675,23 @@ namespace ExploraFITS
             this.b_buscar.UseVisualStyleBackColor = true;
             this.b_buscar.Click += new System.EventHandler(this.B_buscar_Click);
             // 
+            // b_exporta_fits
+            // 
+            this.b_exporta_fits.Image = ((System.Drawing.Image)(resources.GetObject("b_exporta_fits.Image")));
+            this.b_exporta_fits.Location = new System.Drawing.Point(236, 73);
+            this.b_exporta_fits.Name = "b_exporta_fits";
+            this.b_exporta_fits.Size = new System.Drawing.Size(42, 42);
+            this.b_exporta_fits.TabIndex = 89;
+            this.b_exporta_fits.UseVisualStyleBackColor = true;
+            this.b_exporta_fits.Click += new System.EventHandler(this.B_exporta_fits_Click);
+            // 
             // FITS
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.ClientSize = new System.Drawing.Size(1002, 780);
+            this.Controls.Add(this.b_exporta_fits);
             this.Controls.Add(this.b_buscar);
             this.Controls.Add(this.b_conv_espectro);
             this.Controls.Add(this.r_tpc_max);
@@ -711,7 +713,6 @@ namespace ExploraFITS
             this.Controls.Add(this.b_cota_sup);
             this.Controls.Add(this.b_cota_inf);
             this.Controls.Add(this.b_nan);
-            this.Controls.Add(this.sel_HDU_ok);
             this.Controls.Add(this.b_exporta_cabeceras);
             this.Controls.Add(this.r_tabla);
             this.Controls.Add(this.r_imagen);
@@ -804,7 +805,6 @@ namespace ExploraFITS
         private System.Windows.Forms.Label r_imagen;
         private System.Windows.Forms.Label r_tabla;
         private System.Windows.Forms.Button b_exporta_cabeceras;
-        private System.Windows.Forms.Label sel_HDU_ok;
         private System.Windows.Forms.Button b_nan;
         private System.Windows.Forms.Button b_cota_inf;
         private System.Windows.Forms.Button b_cota_sup;
@@ -826,6 +826,7 @@ namespace ExploraFITS
         public System.Windows.Forms.Label r_tpc_max;
         private System.Windows.Forms.Button b_conv_espectro;
         private System.Windows.Forms.Button b_buscar;
+        private System.Windows.Forms.Button b_exporta_fits;
     }
 }
 

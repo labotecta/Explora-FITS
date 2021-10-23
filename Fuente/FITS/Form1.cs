@@ -2,6 +2,7 @@
 using ExploraFits.Properties;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
@@ -64,6 +65,31 @@ namespace ExploraFITS
         public int hdu_actual;
 
         public string FICHERO_FITS;
+        public class ParUtiles
+        {
+            public int NAXIS;
+            public int[] NAXISn;
+            public string FILENAME;
+            public int punto_referencia;
+            public int[] proyeccion = new int[3];
+            public double[] CRPIX;
+            public double[] CRVAL;
+            public string[] CUNIT;
+            public string[] CTYPE;
+            public double[] CDELT;
+            public double[] CROTA;
+            public double[] CD1 = new double[2];
+            public double[] CD2 = new double[2];
+            public double[] PC1 = new double[2];
+            public double[] PC2 = new double[2];
+            public string XTENSION;
+            public int TFIELDS;
+            public string[] TTYPE;
+            public int[] TBCOL;
+            public string[] TFORM;
+            public string[] TUNIT;
+        }
+
         public bool SIMPLE; // T o F conformidad con el estandar
         /*
           8	Character or unsigned binary integer
@@ -338,7 +364,6 @@ namespace ExploraFITS
         private void Form1_Load(object sender, EventArgs e)
         {
             Assembly thisExe = Assembly.GetExecutingAssembly();
-            //string[] nombre_recursos = thisExe.GetManifestResourceNames();
             imguk = new Bitmap(thisExe.GetManifestResourceStream("ExploraFits.Imagenes.ingles.png"));
             imgspain = new Bitmap(thisExe.GetManifestResourceStream("ExploraFits.Imagenes.spain.png"));
             s_decimal = Convert.ToChar(CultureInfo.CurrentCulture.NumberFormat.CurrencyDecimalSeparator);
@@ -382,15 +407,12 @@ namespace ExploraFITS
             Actualiza_b_color_inf();
             ind_color_cota_sup = 0;
             Actualiza_b_color_sup();
-            b_exporta_imagen.Visible = false;
-            b_conv_espectro.Visible = false;
-            b_exporta_tabla.Visible = false;
-            b_exporta_cabeceras.Visible = false;
             panel_img = new Form2
             {
                 fits = this
             };
             panel_img.Show();
+            IniciaParametros();
         }
         private void FITS_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -460,6 +482,7 @@ namespace ExploraFITS
             b_redibuja.Enabled = que;
             b_indexar_hyperleda.Enabled = que;
             b_indexar_sao.Enabled = que;
+            b_exporta_fits.Enabled = que;
             b_exporta_imagen.Enabled = que;
             b_conv_espectro.Enabled = que;
             b_exporta_tabla.Enabled = que;
@@ -923,7 +946,12 @@ namespace ExploraFITS
                 num_octetos = fs.Length;
                 if (num_octetos > 2147483591)
                 {
-                    MessageBox.Show(Idioma.msg[Idioma.lengua, 131], Idioma.msg[Idioma.lengua, 4], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    fs.Close();
+                    DialogResult respuesta = MessageBox.Show(Idioma.msg[Idioma.lengua, 131], Idioma.msg[Idioma.lengua, 4], MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (respuesta == DialogResult.Yes)
+                    {
+                        ExtraeFITS(fichero);
+                    }
                     FICHERO_FITS = string.Empty;
                     return false;
                 }
@@ -956,7 +984,7 @@ namespace ExploraFITS
                 sel_HDU.Items.Clear();
                 sel_imagen.Items.Clear();
                 sel_tabla.Items.Clear();
-                sel_HDU_ok.Text = string.Empty;
+                b_exporta_fits.Visible = false;
                 b_exporta_imagen.Visible = false;
                 b_conv_espectro.Visible = false;
                 b_exporta_tabla.Visible = false;
@@ -1101,54 +1129,57 @@ namespace ExploraFITS
             do
             {
                 s = LeeCabecera(octetos, ref puntero);
-                if (s == null) break;
-                hay_cabecera = true;
+                if (s.Length > 0)
+                {
+                    hay_cabecera = true;
 
-                // Elimina comentarios al final de la línea
+                    // Elimina comentarios al final de la línea
 
-                sd = s.Split('/');
-                s = sd[0];
-                if (s.StartsWith("END")) break;
-                if (s.StartsWith("XTENSION"))
-                {
-                    sd = s.Split('=');
-                    XTENSION = sd[1].Trim().Trim('\'').Trim();
-                }
-                else if (s.StartsWith("BITPIX "))
-                {
-                    sd = s.Split('=');
-                    BITPIX = Convert.ToInt32(sd[1]);
-                }
-                else if (s.StartsWith("NAXIS "))
-                {
-                    sd = s.Split('=');
-                    NAXIS = Convert.ToInt32(sd[1]);
-                    int ejes_min;
-                    if (NAXIS == 1)
+                    sd = s.Split('/');
+                    s = sd[0];
+                    if (s.StartsWith("END")) break;
+                    if (s.StartsWith("XTENSION"))
                     {
-                        // Tara tratarlo como [n, 1]
-
-                        ejes_min = 2;
+                        sd = s.Split('=');
+                        XTENSION = sd[1].Trim().Trim('\'').Trim();
                     }
-                    else
+                    else if (s.StartsWith("BITPIX "))
                     {
-                        ejes_min = NAXIS;
+                        sd = s.Split('=');
+                        BITPIX = Convert.ToInt32(sd[1]);
                     }
-                    NAXISn = new int[ejes_min];
-                    axis_pendientes = NAXIS;
-                }
-                if (axis_pendientes > 0)
-                {
-                    for (int i = 0; i < NAXIS; i++)
+                    else if (s.StartsWith("NAXIS "))
                     {
-                        if (s.StartsWith(string.Format("NAXIS{0} ", i + 1)))
+                        sd = s.Split('=');
+                        NAXIS = Convert.ToInt32(sd[1]);
+                        int ejes_min;
+                        if (NAXIS == 1)
                         {
-                            sd = s.Split('=');
-                            NAXISn[i] = Convert.ToInt32(sd[1]);
-                            axis_pendientes--;
+                            // Tara tratarlo como [n, 1]
+
+                            ejes_min = 2;
+                        }
+                        else
+                        {
+                            ejes_min = NAXIS;
+                        }
+                        NAXISn = new int[ejes_min];
+                        axis_pendientes = NAXIS;
+                    }
+                    if (axis_pendientes > 0)
+                    {
+                        for (int i = 0; i < NAXIS; i++)
+                        {
+                            if (s.StartsWith(string.Format("NAXIS{0} ", i + 1)))
+                            {
+                                sd = s.Split('=');
+                                NAXISn[i] = Convert.ToInt32(sd[1]);
+                                axis_pendientes--;
+                            }
                         }
                     }
                 }
+                if (puntero >= octetos.Length) break;
             } while (true);
             if (!hay_cabecera)
             {
@@ -1278,8 +1309,7 @@ namespace ExploraFITS
             do
             {
                 linea = LeeCabecera(octetos, ref puntero).Trim();
-                if (linea == null) break;
-                if (linea.Trim().Length > 0)
+                if (linea.Length > 0)
                 {
                     lista_cabeceras.Items.Add(string.Format("{0}", linea));
                     if (linea.StartsWith("END"))
@@ -1295,6 +1325,7 @@ namespace ExploraFITS
                         }
                     }
                 }
+                if (puntero >= octetos.Length) break;
             } while (true);
             foreach (KeyValuePair<string, string> p in parametros)
             {
@@ -1968,6 +1999,7 @@ namespace ExploraFITS
             parametros.Clear();
             val_parametro.Text = string.Empty;
             tabla.ColumnCount = 0;
+            b_exporta_fits.Visible = false;
             b_exporta_imagen.Visible = false;
             b_conv_espectro.Visible = false;
             b_exporta_tabla.Visible = false;
@@ -1992,6 +2024,7 @@ namespace ExploraFITS
             if (puntero + 80 >= octetos.Length)
             {
                 MessageBox.Show(Idioma.msg[Idioma.lengua, 56], Idioma.msg[Idioma.lengua, 55], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                puntero = octetos.Length;
                 return string.Empty;
             }
             byte[] cabecera = new byte[80];
@@ -2000,10 +2033,35 @@ namespace ExploraFITS
             if (s.StartsWith('\0'))
             {
                 puntero = octetos.Length;
-                return null;
+                return string.Empty;
             }
             puntero += 80;
-            return s;
+            return s.Trim();
+        }
+        private static string LeeCabecera(FileStream fs, ref long puntero)
+        {
+            if (puntero + 80 >= fs.Length)
+            {
+                MessageBox.Show(Idioma.msg[Idioma.lengua, 56], Idioma.msg[Idioma.lengua, 55], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                puntero = fs.Length;
+                return string.Empty;
+            }
+            byte[] cabecera = new byte[80];
+            int lee = fs.Read(cabecera, 0, 80);
+            if (lee != 80)
+            {
+                MessageBox.Show(Idioma.msg[Idioma.lengua, 56], Idioma.msg[Idioma.lengua, 55], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                puntero = fs.Length;
+                return string.Empty;
+            }
+            puntero += 80;
+            string s = Encoding.ASCII.GetString(cabecera);
+            if (s.StartsWith('\0'))
+            {
+                puntero = fs.Length;
+                return string.Empty;
+            }
+            return s.Trim();
         }
         private bool InterpretaCabecera(int cHDU, string cabecera)
         {
@@ -2442,6 +2500,7 @@ namespace ExploraFITS
             {
                 r = SubColumnas(col);
                 if (r == -1) return;
+                if (TFORM[col].IndexOf("A") != -1) r = 1;
                 if (TTYPE != null)
                 {
                     if (r == 1) sw.Write(string.Format("{0};", TTYPE[col]));
@@ -2460,6 +2519,7 @@ namespace ExploraFITS
                 }
                 col++;
             }
+            sw.WriteLine();
         }
         private void ExportaTablaBin(object[,] datos, StreamWriter sw)
         {
@@ -2496,21 +2556,21 @@ namespace ExploraFITS
                         r = Rep(TFORM[col], ind);
 
                         i1++;
-                        sw.Write(string.Empty);
+                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("B")) != -1)
                     {
                         // 1 byte (byte)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(datos[i1++, i2].ToString());
+                        sw.Write(string.Format("{0};", datos[i1++, i2].ToString()));
                     }
                     else if ((ind = TFORM[col].IndexOf("S")) != -1)
                     {
                         // 1 byte con signo (byte)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(((sbyte)datos[i1++, i2]).ToString());
+                        sw.Write(string.Format("{0};", datos[i1++, i2].ToString()));
                     }
                     else if ((ind = TFORM[col].IndexOf("I")) != -1)
                     {
@@ -2567,7 +2627,7 @@ namespace ExploraFITS
 
                         r = Rep(TFORM[col], ind);
                         i1 += 8;
-                        sw.Write(string.Empty);
+                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("M")) != -1)
                     {
@@ -2575,7 +2635,7 @@ namespace ExploraFITS
 
                         r = Rep(TFORM[col], ind);
                         i1 += 16;
-                        sw.Write(string.Empty);
+                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("P")) != -1)
                     {
@@ -2583,7 +2643,7 @@ namespace ExploraFITS
 
                         r = Rep(TFORM[col], ind);
                         i1 += 8;
-                        sw.Write(string.Empty);
+                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("A")) != -1)
                     {
@@ -2595,9 +2655,13 @@ namespace ExploraFITS
                         sb = new StringBuilder();
                         for (int k1 = 0; k1 < r; k1++)
                         {
-                            for (int k2 = 0; k2 < w; k2++) sb.AppendFormat("{0}", Convert.ToChar(datos[i1++, i2]));
-                            sb.Append(';');
+                            for (int k2 = 0; k2 < w; k2++)
+                            {
+                                if ((int)datos[i1, i2] != 0) sb.AppendFormat("{0}", Convert.ToChar(datos[i1, i2]));
+                                i1++;
+                            }
                         }
+                        sb.Append(';');
                         sw.Write(sb.ToString());
                     }
                     else
@@ -2650,21 +2714,21 @@ namespace ExploraFITS
                         r = Rep(TFORM[col], ind);
 
                         i1++;
-                        sw.Write(string.Empty);
+                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("B")) != -1)
                     {
                         // 1 byte (byte)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(datos[i1++, i2].ToString());
+                        sw.Write(string.Format("{0};", datos[i1++, i2]));
                     }
                     else if ((ind = TFORM[col].IndexOf("S")) != -1)
                     {
                         // 1 byte con signo (byte)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(((sbyte)datos[i1++, i2]).ToString());
+                        sw.Write(string.Format("{0};", (sbyte)datos[i1++, i2]));
                     }
                     else if ((ind = TFORM[col].IndexOf("I")) != -1)
                     {
@@ -2721,7 +2785,7 @@ namespace ExploraFITS
 
                         r = Rep(TFORM[col], ind);
                         i1 += 8;
-                        sw.Write(string.Empty);
+                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("M")) != -1)
                     {
@@ -2729,7 +2793,7 @@ namespace ExploraFITS
 
                         r = Rep(TFORM[col], ind);
                         i1 += 16;
-                        sw.Write(string.Empty);
+                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("P")) != -1)
                     {
@@ -2737,7 +2801,7 @@ namespace ExploraFITS
 
                         r = Rep(TFORM[col], ind);
                         i1 += 8;
-                        sw.Write(string.Empty);
+                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("A")) != -1)
                     {
@@ -2749,9 +2813,13 @@ namespace ExploraFITS
                         sb = new StringBuilder();
                         for (int k1 = 0; k1 < r; k1++)
                         {
-                            for (int k2 = 0; k2 < w; k2++) sb.AppendFormat("{0}", Convert.ToChar(datos[i1++, i2]));
-                            sb.Append(';');
+                            for (int k2 = 0; k2 < w; k2++)
+                            {
+                                if (datos[i1, i2] != 0) sb.AppendFormat("{0}", Convert.ToChar(datos[i1, i2]));
+                                i1++;
+                            }
                         }
+                        sb.Append(';');
                         sw.Write(sb.ToString());
                     }
                     else
@@ -4833,7 +4901,7 @@ namespace ExploraFITS
             parametros.Clear();
             sel_imagen.Items.Clear();
             sel_tabla.Items.Clear();
-            sel_HDU_ok.Text = "...";
+            b_exporta_fits.Visible = false;
             b_exporta_imagen.Visible = false;
             b_conv_espectro.Visible = false;
             b_exporta_tabla.Visible = false;
@@ -4859,7 +4927,7 @@ namespace ExploraFITS
             Disponible(true);
             if (res)
             {
-                sel_HDU_ok.Text = "OK";
+                b_exporta_fits.Visible = true;
                 if (hdu[i].n_imagenes > 0)
                 {
                     for (int k = 0; k < hdu[i].n_imagenes; k++) sel_imagen.Items.Add((k + 1).ToString());
@@ -4888,10 +4956,6 @@ namespace ExploraFITS
                 }
                 b_exporta_cabeceras.Visible = true;
                 b_conv_espectro.Visible = NAXISn.Length == 2 && NAXISn[1] == 1 && hdu[i].n_imagenes > 0 && hdu[i].n_tablas == 0;
-            }
-            else
-            {
-                sel_HDU_ok.Text = "ERR";
             }
         }
         private void Sel_imagen_SelectedIndexChanged(object sender, EventArgs e)
@@ -5820,6 +5884,808 @@ namespace ExploraFITS
                 fs.Close();
             }
             return su;
+        }
+
+        private void B_exporta_fits_Click(object sender, EventArgs e)
+        {
+            ExtraeFITS(FICHERO_FITS);
+        }
+        private bool ExtraeFITS(string fichero)
+        {
+            FileStream fs = new FileStream(fichero, FileMode.Open, FileAccess.Read, FileShare.Read);
+            if (fs == null) return false;
+
+            SaveFileDialog ficheroescritura = new SaveFileDialog()
+            {
+                Filter = "CSV (*.csv)|*.csv|TODO (*.*)|*.*",
+                FilterIndex = 1
+            };
+            if (ficheroescritura.ShowDialog() != DialogResult.OK) return false;
+
+            string carpeta = Path.GetDirectoryName(ficheroescritura.FileName);
+            string fichero_sal = Path.GetFileNameWithoutExtension(ficheroescritura.FileName);
+            FileStream fe;
+            StreamWriter sw;
+            Disponible(false);
+            long bloques_leidos;
+            long puntero = 0;
+            fs.Seek(puntero, SeekOrigin.Begin);
+
+            // Cabeceras
+
+            ParUtiles p = new ParUtiles();
+            CopiaParametros(p);
+            bool le = BitConverter.IsLittleEndian;
+            string fidat;
+            string linea;
+            int cHDU = 0;
+            while (puntero < fs.Length)
+            {
+                fe = new FileStream(Path.Combine(carpeta, string.Format("{0}_{1}_cab.txt", fichero_sal, cHDU + 1)), FileMode.Create, FileAccess.Write, FileShare.Read);
+                sw = new StreamWriter(fe, Encoding.UTF8);
+                axis_pendientes = -1;
+                do
+                {
+                    linea = LeeCabecera(fs, ref puntero).Trim();
+                    if (linea.Length > 0)
+                    {
+                        sw.WriteLine(linea);
+                        if (linea.StartsWith("END"))
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            if (!InterpretaCabecera(cHDU, linea))
+                            {
+                                MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 128], cHDU, linea), Idioma.msg[Idioma.lengua, 4], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                break;
+                            }
+                        }
+                    }
+                    if (puntero >= fs.Length) break;
+                } while (true);
+                sw.Close();
+
+                // Ajustar el puntero al final del último bloque de cabeceras
+
+                bloques_leidos = puntero / BLOQUE;
+                if (bloques_leidos * BLOQUE < puntero) bloques_leidos++;
+                puntero = bloques_leidos * BLOQUE;
+                if (puntero >= fs.Length) break;
+                fs.Seek(puntero, SeekOrigin.Begin);
+                Application.DoEvents();
+
+                if (NAXIS != 0)
+                {
+                    HDU hdu_act = new HDU((cHDU + 1).ToString(), 0, 0, 0);
+                    if (XTENSION.Length == 0)
+                    {
+                        hdu_act.conjunto = 0;
+                    }
+                    else
+                    {
+                        switch (XTENSION.ToUpper())
+                        {
+                            case "IMAGE":
+                                hdu_act.conjunto = 0;
+                                break;
+                            case "BINTABLE":
+                                hdu_act.conjunto = 1;
+                                break;
+                            case "TABLE":
+                                hdu_act.conjunto = 2;
+                                break;
+                            default:
+                                RecuperaParametros(p);
+                                Disponible(true);
+                                return false;
+                        }
+                    }
+                    hdu_act.byPorDato = Math.Abs(BITPIX / 8);
+                    if (BITPIX > 0 && hdu_act.byPorDato == 1)
+                    {
+                        hdu_act.clase_dato = 1;
+                    }
+                    else if (BITPIX > 0 && hdu_act.byPorDato == 2)
+                    {
+                        hdu_act.clase_dato = 2;
+                    }
+                    else if (BITPIX > 0 && hdu_act.byPorDato == 4)
+                    {
+                        hdu_act.clase_dato = 3;
+                    }
+                    else if (BITPIX < 0 && hdu_act.byPorDato == 4)
+                    {
+                        hdu_act.clase_dato = 4;
+                    }
+                    else if (BITPIX < 0 && hdu_act.byPorDato == 8)
+                    {
+                        hdu_act.clase_dato = 5;
+                    }
+                    else
+                    {
+                        MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 7], cHDU, tipoDato, byPorDato), Idioma.msg[Idioma.lengua, 6], MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        RecuperaParametros(p);
+                        Disponible(true);
+                        return false;
+                    }
+                    r_cantidad.Text = Idioma.msg[Idioma.lengua, 134];
+                    r_octetos.Text = string.Format("{0:N0}", NAXISn[1]);
+                    v_leidos.Text = string.Format("{0:N0}", 0);
+                    Application.DoEvents();
+                    if (hdu_act.conjunto == 0)
+                    {
+                        // Datos
+
+                        fidat = Path.Combine(carpeta, string.Format("{0}_{1}_dat.csv", fichero_sal, cHDU + 1));
+                        fe = new FileStream(fidat, FileMode.Create, FileAccess.Write, FileShare.Read);
+                        sw = new StreamWriter(fe, Encoding.UTF8);
+                        if (NAXIS == 3)
+                        {
+                            for (int i3 = 0; i3 < NAXISn[2]; i3++)
+                            {
+                                if (!ExtraeDatos(fs, sw, le, hdu_act))
+                                {
+                                    RecuperaParametros(p);
+                                    Disponible(true);
+                                    return false;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (!ExtraeDatos(fs, sw, le, hdu_act))
+                            {
+                                RecuperaParametros(p);
+                                Disponible(true);
+                                return false;
+                            }
+                        }
+                    }
+                    else if (hdu_act.conjunto == 1)
+                    {
+                        // Tabla binaria
+
+                        fidat = Path.Combine(carpeta, string.Format("{0}_{1}_tab_b.csv", fichero_sal, cHDU + 1));
+                        fe = new FileStream(fidat, FileMode.Create, FileAccess.Write, FileShare.Read);
+                        sw = new StreamWriter(fe, Encoding.UTF8);
+                        if (NAXIS == 3)
+                        {
+                            for (int i3 = 0; i3 < NAXISn[2]; i3++)
+                            {
+                                if (!ExtraeTB(fs, sw, le))
+                                {
+                                    RecuperaParametros(p);
+                                    Disponible(true);
+                                    return false;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (!ExtraeTB(fs, sw, le))
+                            {
+                                RecuperaParametros(p);
+                                Disponible(true);
+                                return false;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Tabla ASCII
+
+                        fidat = Path.Combine(carpeta, string.Format("{0}_{1}_tab_a.csv", fichero_sal, cHDU + 1));
+                        fe = new FileStream(fidat, FileMode.Create, FileAccess.Write, FileShare.Read);
+                        sw = new StreamWriter(fe, Encoding.UTF8);
+                        if (NAXIS == 3)
+                        {
+                            for (int i3 = 0; i3 < NAXISn[2]; i3++)
+                            {
+                                if (!ExtraeTA(fs, sw, le, hdu_act))
+                                {
+                                    RecuperaParametros(p);
+                                    Disponible(true);
+                                    return false;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (!ExtraeTA(fs, sw, le, hdu_act))
+                            {
+                                RecuperaParametros(p);
+                                Disponible(true);
+                                return false;
+                            }
+                        }
+                    }
+                    sw.Close();
+                    bloques_leidos = fs.Position / BLOQUE;
+                    if (bloques_leidos * BLOQUE < fs.Position) bloques_leidos++;
+                    puntero = bloques_leidos * BLOQUE;
+                    if (puntero >= fs.Length) break;
+                    fs.Seek(puntero, SeekOrigin.Begin);
+                }
+                cHDU++;
+            }
+            fs.Close();
+            RecuperaParametros(p);
+            Console.Beep();
+            Disponible(true);
+            return true;
+        }
+        private void CopiaParametros(ParUtiles p)
+        {
+            p.NAXIS = NAXIS;
+            if (NAXISn == null) p.NAXISn = null;
+            else
+            {
+                p.NAXISn = new int[NAXISn.Length];
+                for (int i = 0; i < NAXISn.Length; i++) p.NAXISn[i] = NAXISn[i];
+            }
+            p.FILENAME = FILENAME;
+            p.punto_referencia = punto_referencia;
+            p.proyeccion[0] = proyeccion[0];
+            p.proyeccion[1] = proyeccion[1];
+            p.proyeccion[2] = proyeccion[2];
+            if (CRPIX == null) p.CRPIX = null;
+            else
+            {
+                p.CRPIX = new double[CRPIX.Length];
+                for (int i = 0; i < CRPIX.Length; i++) p.CRPIX[i] = CRPIX[i];
+            }
+            if (CRVAL == null) p.CRVAL = null;
+            else
+            {
+                p.CRVAL = new double[CRVAL.Length];
+                for (int i = 0; i < CRVAL.Length; i++) p.CRVAL[i] = CRVAL[i];
+            }
+            if (CUNIT == null) p.CUNIT = null;
+            else
+            {
+                p.CUNIT = new string[CUNIT.Length];
+                for (int i = 0; i < CUNIT.Length; i++) p.CUNIT[i] = CUNIT[i];
+            }
+            if (CTYPE == null) p.CTYPE = null;
+            else
+            {
+                p.CTYPE = new string[CTYPE.Length];
+                for (int i = 0; i < CTYPE.Length; i++) p.CTYPE[i] = CTYPE[i];
+            }
+            if (CDELT == null) p.CDELT = null;
+            else
+            {
+                p.CDELT = new double[CDELT.Length];
+                for (int i = 0; i < CDELT.Length; i++) p.CDELT[i] = CDELT[i];
+            }
+            if (CROTA == null) p.CROTA = null;
+            else
+            {
+                p.CROTA = new double[CROTA.Length];
+                for (int i = 0; i < CROTA.Length; i++) p.CROTA[i] = CROTA[i];
+            }
+            p.CD1[0] = CD1[0];
+            p.CD1[1] = CD1[1];
+            p.CD2[0] = CD2[0];
+            p.CD2[1] = CD2[1];
+            p.PC1[0] = PC1[0];
+            p.PC1[1] = PC1[1];
+            p.PC2[0] = PC2[0];
+            p.PC2[1] = PC2[1];
+            p.XTENSION = XTENSION;
+            p.TFIELDS = TFIELDS;
+            if (TTYPE == null) p.TTYPE = null;
+            else
+            {
+                p.TTYPE = new string[TTYPE.Length];
+                for (int i = 0; i < TTYPE.Length; i++) p.TTYPE[i] = TTYPE[i];
+            }
+            if (TBCOL == null) p.TBCOL = null;
+            else
+            {
+                p.TBCOL = new int[TBCOL.Length];
+                for (int i = 0; i < TBCOL.Length; i++) p.TBCOL[i] = TBCOL[i];
+            }
+            if (TFORM == null) p.TFORM = null;
+            else
+            {
+                p.TFORM = new string[TFORM.Length];
+                for (int i = 0; i < TFORM.Length; i++) p.TFORM[i] = TFORM[i];
+            }
+            if (TUNIT == null) p.TUNIT = null;
+            else
+            {
+                p.TUNIT = new string[TUNIT.Length];
+                for (int i = 0; i < TUNIT.Length; i++) p.TUNIT[i] = TUNIT[i];
+            }
+        }
+        private void RecuperaParametros(ParUtiles p)
+        {
+            NAXIS = p.NAXIS;
+            if (p.NAXISn == null) NAXISn = null;
+            else
+            {
+                NAXISn = new int[p.NAXISn.Length];
+                for (int i = 0; i < p.NAXISn.Length; i++) NAXISn[i] = p.NAXISn[i];
+            }
+            FILENAME = p.FILENAME;
+            punto_referencia = p.punto_referencia;
+            proyeccion[0] = p.proyeccion[0];
+            proyeccion[1] = p.proyeccion[1];
+            proyeccion[2] = p.proyeccion[2];
+            if (p.CRPIX == null) CRPIX = null;
+            else
+            {
+                CRPIX = new double[p.CRPIX.Length];
+                for (int i = 0; i < p.CRPIX.Length; i++) CRPIX[i] = p.CRPIX[i];
+            }
+            if (p.CRVAL == null) CRVAL = null;
+            else
+            {
+                CRVAL = new double[p.CRVAL.Length];
+                for (int i = 0; i < p.CRVAL.Length; i++) CRVAL[i] = p.CRVAL[i];
+            }
+            if (p.CUNIT == null) CUNIT = null;
+            else
+            {
+                CUNIT = new string[p.CUNIT.Length];
+                for (int i = 0; i < p.CUNIT.Length; i++) CUNIT[i] = p.CUNIT[i];
+            }
+            if (p.CTYPE == null) CTYPE = null;
+            else
+            {
+                CTYPE = new string[p.CTYPE.Length];
+                for (int i = 0; i < p.CTYPE.Length; i++) CTYPE[i] = p.CTYPE[i];
+            }
+            if (p.CDELT == null) CDELT = null;
+            else
+            {
+                CDELT = new double[p.CDELT.Length];
+                for (int i = 0; i < p.CDELT.Length; i++) CDELT[i] = p.CDELT[i];
+            }
+            if (p.CROTA == null) CROTA = null;
+            else
+            {
+                CROTA = new double[p.CROTA.Length];
+                for (int i = 0; i < p.CROTA.Length; i++) CROTA[i] = p.CROTA[i];
+            }
+            CD1[0] = p.CD1[0];
+            CD1[1] = p.CD1[1];
+            CD2[0] = p.CD2[0];
+            CD2[1] = p.CD2[1];
+            PC1[0] = p.PC1[0];
+            PC1[1] = p.PC1[1];
+            PC2[0] = p.PC2[0];
+            PC2[1] = p.PC2[1];
+            XTENSION = p.XTENSION;
+            TFIELDS = p.TFIELDS;
+            if (p.TTYPE == null) TTYPE = null;
+            else
+            {
+                TTYPE = new string[p.TTYPE.Length];
+                for (int i = 0; i < p.TTYPE.Length; i++) TTYPE[i] = p.TTYPE[i];
+            }
+            if (p.TBCOL == null) TBCOL = null;
+            else
+            {
+                TBCOL = new int[p.TBCOL.Length];
+                for (int i = 0; i < p.TBCOL.Length; i++) TBCOL[i] = p.TBCOL[i];
+            }
+            if (p.TFORM == null) TFORM = null;
+            else
+            {
+                TFORM = new string[p.TFORM.Length];
+                for (int i = 0; i < p.TFORM.Length; i++) TFORM[i] = p.TFORM[i];
+            }
+            if (p.TUNIT == null) TUNIT = null;
+            else
+            {
+                TUNIT = new string[p.TUNIT.Length];
+                for (int i = 0; i < p.TUNIT.Length; i++) TUNIT[i] = p.TUNIT[i];
+            }
+        }
+        private bool ElementosCeldaFichero(FileStream fs, StreamWriter sw, bool le, int tipo, int lon, int inde, int col)
+        {
+            int r = Rep(TFORM[col], inde);
+            string[] elementos_fila_columna;
+            byte[] dat = new byte[r * lon];
+            fs.Read(dat, 0, r * lon);
+            elementos_fila_columna = ElementosCeldaTipoFichero(le, r, dat, tipo, lon);
+            for (int k = 0; k < elementos_fila_columna.Length; k++) sw.Write(string.Format("{0};", elementos_fila_columna[k]));
+            return true;
+        }
+        private static string[] ElementosCeldaTipoFichero(bool le, int r, byte[] dat, int tipo, int lon)
+        {
+            int ne = 0;
+            string[] elementos = new string[r];
+            byte[] doble = new byte[lon];
+            int ir = 0;
+            int i1 = 0;
+            while (true)
+            {
+                if (le)
+                {
+                    for (int k = lon - 1; k >= 0; k--) doble[k] = dat[i1++];
+                }
+                else
+                {
+                    for (int k = 0; k < lon; k++) doble[k] = dat[i1++];
+                }
+                elementos[ne++] = tipo switch
+                {
+                    0 => BitConverter.ToBoolean(doble).ToString(),
+                    1 => BitConverter.ToInt16(doble).ToString(),
+                    2 => BitConverter.ToUInt16(doble).ToString(),
+                    3 => BitConverter.ToInt32(doble).ToString(),
+                    4 => BitConverter.ToUInt32(doble).ToString(),
+                    5 => BitConverter.ToInt64(doble).ToString(),
+                    6 => BitConverter.ToSingle(doble).ToString(),
+                    7 => BitConverter.ToDouble(doble).ToString(),
+                    _ => "0",
+                };
+                ir++;
+                if (ir == r) break;
+            }
+            return elementos;
+        }
+        private bool ExtraeDatos(FileStream fs, StreamWriter sw, bool le, HDU hdu_act)
+        {
+            int i2;
+            int i1;
+            byte[] bytesDato = new byte[hdu_act.byPorDato];
+            int contador = 0;
+            for (i2 = 0; i2 < NAXISn[1]; i2++)
+            {
+                contador++;
+                if (contador % 1000 == 0)
+                {
+                    v_leidos.Text = string.Format("{0:N0}", contador);
+                    Application.DoEvents();
+                }
+                for (i1 = 0; i1 < NAXISn[0]; i1++)
+                {
+                    if (le)
+                    {
+                        for (int k = hdu_act.byPorDato - 1; k >= 0; k--) bytesDato[k] = (byte)fs.ReadByte();
+                    }
+                    else
+                    {
+                        for (int k = 0; k < hdu_act.byPorDato; k++) bytesDato[k] = (byte)fs.ReadByte();
+                    }
+                    switch (hdu_act.clase_dato)
+                    {
+                        case 1:
+                            sw.Write(string.Format("{0};", bytesDato[0]));
+                            break;
+                        case 2:
+                            sw.Write(string.Format("{0};", BitConverter.ToInt16(bytesDato)));
+                            break;
+                        case 3:
+                            sw.Write(string.Format("{0};", BitConverter.ToInt32(bytesDato)));
+                            break;
+                        case 4:
+                            sw.Write(string.Format("{0};", BitConverter.ToSingle(bytesDato)));
+                            break;
+                        default:
+                            sw.Write(string.Format("{0};", BitConverter.ToDouble(bytesDato)));
+                            break;
+                    }
+                }
+                sw.WriteLine();
+                sw.Flush();
+            }
+            v_leidos.Text = string.Format("{0:N0}", contador);
+            return true;
+        }
+        private bool ExtraeTA(FileStream fs, StreamWriter sw, bool le, HDU hdu_act)
+        {
+            for (int col = 0; col < TFIELDS; col++)
+            {
+                if (TTYPE != null)
+                {
+                    sw.Write(string.Format("{0};", TTYPE[col]));
+                }
+                else
+                {
+                    sw.Write(string.Format("Col{0};", col + 1));
+                }
+            }
+            sw.WriteLine("");
+            int i2;
+            int i1;
+            byte b;
+            char c;
+            int contador = 0;
+            string s;
+            StringBuilder sb;
+            TBCOL[TFIELDS] = NAXISn[0];
+            if (hdu_act.byPorDato == 1)
+            {
+                for (i2 = 0; i2 < NAXISn[1]; i2++)
+                {
+                    contador++;
+                    if (contador % 1000 == 0)
+                    {
+                        v_leidos.Text = string.Format("{0:N0}", contador);
+                        Application.DoEvents();
+                    }
+                    sb = new StringBuilder();
+                    for (i1 = 0; i1 < NAXISn[0]; i1++)
+                    {
+                        b = (byte)fs.ReadByte();
+                        c = Convert.ToChar(b);
+                        if (c == s_millar) c = s_decimal;
+                        sb.AppendFormat("{0}", c);
+                    }
+                    s = sb.ToString();
+                    for (int i = 0; i < TFIELDS; i++)
+                    {
+                        sw.Write(string.Format("{0};", s.Substring(TBCOL[i] - 1, TBCOL[i + 1] - TBCOL[i]).Trim()));
+                    }
+                    sw.WriteLine();
+                    sw.Flush();
+                }
+            }
+            else
+            {
+                double v;
+                byte[] bytesDato = new byte[hdu_act.byPorDato];
+                for (i2 = 0; i2 < NAXISn[1]; i2++)
+                {
+                    contador++;
+                    if (contador % 1000 == 0)
+                    {
+                        v_leidos.Text = string.Format("{0:N0}", contador);
+                        Application.DoEvents();
+                    }
+                    sb = new StringBuilder();
+                    for (i1 = 0; i1 < NAXISn[0]; i1++)
+                    {
+                        if (le)
+                        {
+                            for (int k = hdu_act.byPorDato - 1; k >= 0; k--) bytesDato[k] = (byte)fs.ReadByte();
+                        }
+                        else
+                        {
+                            for (int k = 0; k < hdu_act.byPorDato; k++) bytesDato[k] = (byte)fs.ReadByte();
+                        }
+                        if (hdu_act.clase_dato == 0)
+                        {
+                            v = hdu_act.byPorDato switch
+                            {
+                                2 => BitConverter.ToInt16(bytesDato),
+                                _ => BitConverter.ToInt32(bytesDato),
+                            };
+                        }
+                        else
+                        {
+                            v = hdu_act.byPorDato switch
+                            {
+                                4 => BitConverter.ToSingle(bytesDato),
+                                _ => BitConverter.ToDouble(bytesDato),
+                            };
+                        }
+                        c = Convert.ToChar(v);
+                        if (c == s_millar) c = s_decimal;
+                        sb.AppendFormat("{0}", c);
+                    }
+                    s = sb.ToString();
+                    for (int i = 0; i < TFIELDS; i++)
+                    {
+                        sw.Write(string.Format("{0};", s.Substring(TBCOL[i] - 1, TBCOL[i + 1] - TBCOL[i]).Trim()));
+                    }
+                    sw.WriteLine();
+                    sw.Flush();
+                }
+            }
+            v_leidos.Text = string.Format("{0:N0}", contador);
+            return true;
+        }
+        private bool ExtraeTB(FileStream fs, StreamWriter sw, bool le)
+        {
+            int r;
+            int col;
+            int ind;
+            int contador = 0;
+            ExportaCabeceraBin(sw);
+            for (int i2 = 0; i2 < NAXISn[1]; i2++)
+            {
+                contador++;
+                if (contador % 1000 == 0)
+                {
+                    v_leidos.Text = string.Format("{0:N0}", contador);
+                    Application.DoEvents();
+                }
+                col = 0;
+                while (col < TFIELDS)
+                {
+                    if ((ind = TFORM[col].IndexOf("L")) != -1)
+                    {
+                        // 1 byte (lógico)
+
+                        r = Rep(TFORM[col], ind);
+                        for (int k = 0; k < r; k++)
+                        {
+                            fs.Seek(1, SeekOrigin.Current);
+                            sw.Write(";");
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("X")) != -1)
+                    {
+                        // 1 bit
+
+                        r = Rep(TFORM[col], ind);
+                        for (int k = 0; k < r; k++)
+                        {
+                            fs.Seek(1, SeekOrigin.Current);
+                            sw.Write(";");
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("B")) != -1)
+                    {
+                        // 1 byte (byte)
+
+                        r = Rep(TFORM[col], ind);
+                        for (int k = 0; k < r; k++)
+                        {
+                            sw.Write(string.Format("{0};", (byte)fs.ReadByte()));
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("S")) != -1)
+                    {
+                        // 1 byte con signo (byte)
+
+                        r = Rep(TFORM[col], ind);
+                        for (int k = 0; k < r; k++)
+                        {
+                            sw.Write(string.Format("{0};", (sbyte)fs.ReadByte()));
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("I")) != -1)
+                    {
+                        // 2 bytes (entero)
+
+                        if (!ElementosCeldaFichero(fs, sw, le, 1, 2, ind, col))
+                        {
+                            sw.Close();
+                            fs.Close();
+                            return false;
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("U")) != -1)
+                    {
+                        // 2 bytes (entero sin signo)
+
+                        if (!ElementosCeldaFichero(fs, sw, le, 2, 2, ind, col))
+                        {
+                            sw.Close();
+                            fs.Close();
+                            return false;
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("J")) != -1)
+                    {
+                        // 4 bytes (entero)
+
+                        if (!ElementosCeldaFichero(fs, sw, le, 3, 4, ind, col))
+                        {
+                            sw.Close();
+                            fs.Close();
+                            return false;
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("V")) != -1)
+                    {
+                        // 4 bytes (entero sin signo)
+
+                        if (!ElementosCeldaFichero(fs, sw, le, 4, 4, ind, col))
+                        {
+                            sw.Close();
+                            fs.Close();
+                            return false;
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("K")) != -1)
+                    {
+                        // 8 bytes (entero)
+
+                        if (!ElementosCeldaFichero(fs, sw, le, 5, 8, ind, col))
+                        {
+                            sw.Close();
+                            fs.Close();
+                            return false;
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("E")) != -1)
+                    {
+                        // 4 bytes (simple precisión)
+
+                        if (!ElementosCeldaFichero(fs, sw, le, 6, 4, ind, col))
+                        {
+                            sw.Close();
+                            fs.Close();
+                            return false;
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("D")) != -1)
+                    {
+                        // 8 bytes (doble precisión)
+
+                        if (!ElementosCeldaFichero(fs, sw, le, 7, 8, ind, col))
+                        {
+                            sw.Close();
+                            fs.Close();
+                            return false;
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("C")) != -1)
+                    {
+                        // 8 bytes (simple precisión complejo)
+
+                        r = Rep(TFORM[col], ind);
+                        for (int k = 0; k < r; k++)
+                        {
+                            fs.Seek(8, SeekOrigin.Current);
+                            sw.Write(";");
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("M")) != -1)
+                    {
+                        // 16 bytes (doble precisión complejo)
+
+                        r = Rep(TFORM[col], ind);
+                        for (int k = 0; k < r; k++)
+                        {
+                            fs.Seek(16, SeekOrigin.Current);
+                            sw.Write(";");
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("P")) != -1)
+                    {
+                        // 8 bytes (descriptor de array)
+
+                        r = Rep(TFORM[col], ind);
+                        for (int k = 0; k < r; k++)
+                        {
+                            fs.Seek(8, SeekOrigin.Current);
+                            sw.Write(";");
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("A")) != -1)
+                    {
+                        // 1 bytes (caracter)
+
+                        int b;
+                        r = Rep(TFORM[col], ind);
+                        int w = ind == TFORM[col].Length - 1 ? 1 : Convert.ToInt32(TFORM[col][(ind + 1)..]);
+                        StringBuilder sb = new StringBuilder(r * w);
+                        for (int k1 = 0; k1 < r; k1++)
+                        {
+                            for (int k2 = 0; k2 < w; k2++)
+                            {
+                                b = fs.ReadByte();
+                                if (b != 0) sb.AppendFormat("{0}", Convert.ToChar((byte)b));
+                            }
+                        }
+                        sw.Write(string.Format("{0};", sb.ToString()));
+                    }
+                    else
+                    {
+                        MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 58], TFORM[col]), Idioma.msg[Idioma.lengua, 57], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        sw.Close();
+                        fs.Close();
+                        Disponible(true);
+                        return false;
+                    }
+                    col++;
+                }
+                sw.WriteLine("");
+                sw.Flush();
+            }
+            v_leidos.Text = string.Format("{0:N0}", contador);
+            return true;
         }
     }
 }
