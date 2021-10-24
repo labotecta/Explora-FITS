@@ -491,6 +491,7 @@ namespace ExploraFITS
             b_restar.Enabled = que;
             lista_cabeceras.Enabled = que;
             lista_parametros.Enabled = que;
+            tabla.Enabled = que;
             sel_HDU.Enabled = que;
             if (sel_imagen.Items.Count > 1) sel_imagen.Enabled = que;
             if (sel_tabla.Items.Count > 1) sel_tabla.Enabled = que;
@@ -829,7 +830,6 @@ namespace ExploraFITS
         }
         private bool LeeFichero(string fichero)
         {
-            Text = string.Format(Idioma.msg[Idioma.lengua, 0], VERSIONAPP, fichero);
             if (!string.IsNullOrEmpty(FICHERO_FITS))
             {
                 // Actualiza el previo
@@ -906,6 +906,7 @@ namespace ExploraFITS
                 }
                 fs.Close();
                 FICHERO_FITS = fichero = CreaFITS(fichero, "", Idioma.msg[Idioma.lengua, 105], null, datosf);
+                Text = string.Format(Idioma.msg[Idioma.lengua, 0], VERSIONAPP, FICHERO_FITS);
             }
             else if (
                 ext.Equals(".bmp", StringComparison.OrdinalIgnoreCase) ||
@@ -935,12 +936,11 @@ namespace ExploraFITS
                 }
                 img = new Bitmap(fichero);
                 FICHERO_FITS = fichero = CreaFITS(fichero, "", true, !f_referencia_cancelado, Idioma.msg[Idioma.lengua, 94]);
+                Text = string.Format(Idioma.msg[Idioma.lengua, 0], VERSIONAPP, FICHERO_FITS);
             }
             fs = new FileStream(fichero, FileMode.Open, FileAccess.Read, FileShare.Read);
             if (fs != null)
             {
-                FICHERO_FITS = fichero;
-
                 // Lee a memoria todos los bytes del fichero
 
                 num_octetos = fs.Length;
@@ -952,42 +952,20 @@ namespace ExploraFITS
                     {
                         ExtraeFITS(fichero);
                     }
-                    FICHERO_FITS = string.Empty;
                     return false;
                 }
+                FICHERO_FITS = fichero;
+                Text = string.Format(Idioma.msg[Idioma.lengua, 0], VERSIONAPP, FICHERO_FITS);
                 r_cantidad.Text = Idioma.msg[Idioma.lengua, 107];
                 r_octetos.Text = string.Format("{0:N0}", num_octetos);
                 octetos = new byte[num_octetos];
-                if (num_octetos < 2147483591)
-                {
-                    fs.Read(octetos, 0, (int)num_octetos);
-                }
-                else
-                {
-                    // En bloques de 1M
-
-                    int trozo_leido;
-                    const int l_trozo = 1048576;
-                    byte[] trozo = new byte[l_trozo];
-                    long ii = 0;
-                    while (ii < num_octetos)
-                    {
-                        fs.Seek(ii, SeekOrigin.Begin);
-                        trozo_leido = fs.Read(trozo, 0, l_trozo);
-                        Array.Copy(trozo, 0, octetos, ii, trozo_leido);
-                        ii += trozo_leido;
-                    }
-                }
+                fs.Read(octetos, 0, (int)num_octetos);
                 fs.Close();
 
                 IniciaParametros();
                 sel_HDU.Items.Clear();
                 sel_imagen.Items.Clear();
                 sel_tabla.Items.Clear();
-                b_exporta_fits.Visible = false;
-                b_exporta_imagen.Visible = false;
-                b_conv_espectro.Visible = false;
-                b_exporta_tabla.Visible = false;
 
                 // Explora los bytes leidos
 
