@@ -375,7 +375,7 @@ namespace ExploraFITS
             if (Idioma.lengua == -1) Idioma.lengua = 0;
             if (primeravez == true)
             {
-                if (System.Globalization.CultureInfo.CurrentUICulture.ThreeLetterISOLanguageName.Equals("spa", StringComparison.OrdinalIgnoreCase) == true)
+                if (CultureInfo.CurrentUICulture.ThreeLetterISOLanguageName.Equals("spa", StringComparison.OrdinalIgnoreCase) == true)
                 {
                     // Español
 
@@ -4383,7 +4383,7 @@ namespace ExploraFITS
         public void DibujaEspectro()
         {
             Disponible(false);
-            double ancho_marca = 100;
+            double ANCHO_MARCA = 100;
 
             // z = (observada - emitida) / emitida
             // emitida = observada / (1 + z)
@@ -4395,10 +4395,20 @@ namespace ExploraFITS
             es_actual.util_x = es_actual.x.Length;
 
             double factor = (double)es_actual.util_x / panel_img.ancho_lienzo;
-            es_actual.mizq = (int)(130 * factor);
-            es_actual.mdch = (int)(50 * factor);
-            es_actual.msup = (int)(50 * factor);
-            es_actual.minf = (int)(70 * factor);
+            if (factor < 0.6)
+            {
+                es_actual.mizq = (int)(200 * factor);
+                es_actual.mdch = (int)(60 * factor);
+                es_actual.msup = (int)(60 * factor);
+                es_actual.minf = (int)(120 * factor);
+            }
+            else
+            {
+                es_actual.mizq = (int)(140 * factor);
+                es_actual.mdch = (int)(50 * factor);
+                es_actual.msup = (int)(50 * factor);
+                es_actual.minf = (int)(70 * factor);
+            }
 
             es_actual.dim_x = es_actual.util_x + es_actual.mizq + es_actual.mdch;
             es_actual.dim_y = (int)(es_actual.dim_x * panel_img.alto_lienzo / (double)panel_img.ancho_lienzo);
@@ -4453,15 +4463,16 @@ namespace ExploraFITS
                 Disponible(true);
                 return;
             }
+
             // Redondear el X mínimo a cientos por defecto
 
-            int rx = (int)(es_actual.minx / ancho_marca);
-            es_actual.minx = rx * ancho_marca;
+            int rx = (int)(es_actual.minx / ANCHO_MARCA);
+            es_actual.minx = rx * ANCHO_MARCA;
 
             // Redondear el X máximo a cientos por exceso
 
-            int ry = (int)(es_actual.maxx / ancho_marca) + 1;
-            es_actual.maxx = ry * ancho_marca;
+            int ry = (int)(es_actual.maxx / ANCHO_MARCA) + 1;
+            es_actual.maxx = ry * ANCHO_MARCA;
 
             double pvx = es_actual.util_x / (es_actual.maxx - es_actual.minx);
             double pvy = es_actual.util_y / (es_actual.maxy - es_actual.miny);
@@ -4478,17 +4489,18 @@ namespace ExploraFITS
             Pen lapiz_verde = new Pen(Color.Green, ancho_lapiz);
             ancho_lapiz /= 2;
             if (ancho_lapiz < 1) ancho_lapiz = 1;
-            Pen lapiz_fino = new Pen(Color.Red, ancho_lapiz);
+            Pen lapiz_fino_rojo = new Pen(Color.Red, ancho_lapiz);
+            Pen lapiz_fino_azul = new Pen(Color.LightBlue, ancho_lapiz);
 
             // Se dibuja en img antes de su adaptación al lienzo
 
             // Eje X
 
             Font fuente = new Font("Verdana", (float)(10 * es_actual.escala_x));
-            int n_marcasx = (int)((es_actual.maxx - es_actual.minx) / ancho_marca) + 1;
+            int n_marcasx = (int)((es_actual.maxx - es_actual.minx) / ANCHO_MARCA) + 1;
             if (n_marcasx > 50) n_marcasx /= 10;
             if (n_marcasx < 5) n_marcasx *= 5;
-            ancho_marca = (es_actual.maxx - es_actual.minx) / n_marcasx;
+            ANCHO_MARCA = (es_actual.maxx - es_actual.minx) / n_marcasx;
 
             double xm = es_actual.minx;
             py1 = es_actual.msup + es_actual.util_y + es_actual.minf / 2;
@@ -4497,37 +4509,71 @@ namespace ExploraFITS
                 px1 = (int)((xm - es_actual.minx) * pvx);
                 g.DrawLine(lapiz, es_actual.mizq + px1, es_actual.msup + es_actual.util_y, es_actual.mizq + px1, py1);
                 g.DrawString(string.Format("{0:N0}", xm), fuente, Brushes.White, es_actual.mizq + px1, py1);
-                xm += ancho_marca;
+                xm += ANCHO_MARCA;
             }
 
             // Cotas en el eje Y
 
             // Mayor
 
-            g.DrawLine(lapiz_fino, es_actual.mizq, es_actual.msup, es_actual.mizq + es_actual.util_x, es_actual.msup);
+            g.DrawLine(lapiz_fino_rojo, es_actual.mizq, es_actual.msup, es_actual.mizq + es_actual.util_x, es_actual.msup);
             py1 = (int)(es_actual.msup - (fuente.Height + 4 * es_actual.escala_y));
             if (py1 < 0) py1 = 0;
             g.DrawString(string.Format("{0:e3}", es_actual.maxy), fuente, Brushes.White, 0, py1);
 
             // Menor
 
-            g.DrawLine(lapiz_fino, es_actual.mizq, es_actual.msup + es_actual.util_y, es_actual.mizq + es_actual.util_x, es_actual.msup + es_actual.util_y);
+            g.DrawLine(lapiz_fino_rojo, es_actual.mizq, es_actual.msup + es_actual.util_y, es_actual.mizq + es_actual.util_x, es_actual.msup + es_actual.util_y);
             g.DrawString(string.Format("{0:e3}", es_actual.miny), fuente, Brushes.White, 0, (float)(es_actual.msup + es_actual.util_y + 4 * es_actual.escala_y));
 
             // Líneas atómicas
 
-            float ux = 0;
-            int cy = 0;
             string linea;
-            string nombre;
             py1 = es_actual.util_y;
             for (int i = 0; i < panel_img.lista_elegidas.Items.Count; i++)
             {
                 linea = panel_img.lista_elegidas.Items[i].ToString();
                 xm = Convert.ToDouble(linea.Substring(0, 10).Trim());
+                px1 = (int)((xm - es_actual.minx) * pvx);
+                g.DrawLine(lapiz_verde, es_actual.mizq + px1, es_actual.msup + py1, es_actual.mizq + px1, es_actual.msup);
+            }
+
+            // Picos
+
+            if (panel_img.picos != null && panel_img.picos.Count > 0)
+            {
+                int k;
+                py1 = es_actual.util_y;
+                for (int i = 0; i < panel_img.picos.Count; i++)
+                {
+                    k = panel_img.picos[i].indice;
+                    xm = es_actual.x[k] * inv_1mz;
+                    px1 = (int)((xm - es_actual.minx) * pvx);
+                    if (panel_img.picos[i].valor < 0)
+                    {
+                        g.DrawLine(lapiz_fino_rojo, es_actual.mizq + px1, es_actual.msup + py1, es_actual.mizq + px1, es_actual.msup);
+                    }
+                    else
+                    {
+                        g.DrawLine(lapiz_fino_azul, es_actual.mizq + px1, es_actual.msup + py1, es_actual.mizq + px1, es_actual.msup);
+                    }
+                }
+            }
+
+            float ux;
+            int cy;
+            string nombre;
+
+            // Rótulos de las líneas atómicas
+
+            ux = 0;
+            cy = 0;
+            for (int i = 0; i < panel_img.lista_elegidas.Items.Count; i++)
+            {
+                linea = panel_img.lista_elegidas.Items[i].ToString();
+                xm = Convert.ToDouble(linea.Substring(0, 10).Trim());
                 nombre = linea[10..].Trim();
-                px1 = px2 = (int)((xm - es_actual.minx) * pvx);
-                g.DrawLine(lapiz_verde, es_actual.mizq + px1, es_actual.msup + py1, es_actual.mizq + px2, es_actual.msup);
+                px1 = (int)((xm - es_actual.minx) * pvx);
                 if (es_actual.mizq + px1 < ux)
                 {
                     cy++;
@@ -4543,33 +4589,38 @@ namespace ExploraFITS
                 ux = es_actual.mizq + px1 + g.MeasureString(nombre, fuente).Width;
             }
 
-            // Picos
+            // Rótulos de los picos
 
             if (panel_img.picos != null && panel_img.picos.Count > 0)
             {
                 int k;
-                py1 = es_actual.util_y;
                 ux = 0;
                 cy = 0;
                 for (int i = 0; i < panel_img.picos.Count; i++)
                 {
                     k = panel_img.picos[i].indice;
                     xm = es_actual.x[k] * inv_1mz;
-                    px1 = px2 = (int)((xm - es_actual.minx) * pvx);
-                    g.DrawLine(lapiz_fino, es_actual.mizq + px1, es_actual.msup + py1, es_actual.mizq + px2, es_actual.msup);
+                    px1 = (int)((xm - es_actual.minx) * pvx);
                     nombre = string.Format("{0:f3}", xm);
                     if (es_actual.mizq + px1 + 2 < ux)
                     {
                         cy++;
                         if (cy == 5) cy = 0;
-                        py2 = (int)(py1 - cy * fuente.Height - 4 * es_actual.escala_y);
+                        py2 = (int)(es_actual.util_y - cy * fuente.Height - 4 * es_actual.escala_y);
                     }
                     else
                     {
                         cy = 0;
-                        py2 = py1;
+                        py2 = es_actual.util_y;
                     }
-                    g.DrawString(nombre, fuente, Brushes.Red, es_actual.mizq + px1 + 2, (float)(es_actual.msup + py2 - fuente.Height - 4 * es_actual.escala_y)); ;
+                    if (panel_img.picos[i].valor < 0)
+                    {
+                        g.DrawString(nombre, fuente, Brushes.Red, es_actual.mizq + px1 + 2, (float)(es_actual.msup + py2 - fuente.Height - 4 * es_actual.escala_y)); ;
+                    }
+                    else
+                    {
+                        g.DrawString(nombre, fuente, Brushes.LightBlue, es_actual.mizq + px1 + 2, (float)(es_actual.msup + py2 - fuente.Height - 4 * es_actual.escala_y)); ;
+                    }
                     ux = es_actual.mizq + px1 + 2 + g.MeasureString(nombre, fuente).Width;
                 }
             }
@@ -4644,19 +4695,31 @@ namespace ExploraFITS
         }
         public bool BuscaPicos()
         {
+            const double MIN_DEFECTO = 0.25;
+            const double RANGO_X = 0.01;
+
             if (es_actual == null) return false;
             double min;
             if (panel_img.v_hueco.Text.Trim().Length == 0)
             {
-                // Un 25% del rango de variación
+                // Un MIN_DEFECTO % del rango de variación
 
-                min = 0.25 * (es_actual.maxy - es_actual.miny);
+                panel_img.v_hueco.Text = string.Format("{0}", MIN_DEFECTO * 100);
+                min = MIN_DEFECTO * (es_actual.maxy - es_actual.miny);
             }
             else
             {
-                min = Convert.ToDouble(panel_img.v_hueco.Text.Trim().Replace(s_millar, s_decimal));
+                min = Convert.ToDouble(panel_img.v_hueco.Text.Trim().Replace(s_millar, s_decimal)) / 100 * (es_actual.maxy - es_actual.miny);
             }
-            double var;
+            double dif_significativa;
+            if (panel_img.v_significativa.Text.Trim().Length > 0)
+            {
+                dif_significativa = Convert.ToDouble(panel_img.v_significativa.Text.Trim().Replace(s_millar, s_decimal)) / 100;
+            }
+            else
+            {
+                dif_significativa = 0;
+            }
             int tendencia = es_actual.y[1] - es_actual.y[0] > 0 ? 1 : 0;    // 1 = crece
             double var_acu = tendencia == 0 ? es_actual.y[0] - es_actual.y[1] : es_actual.y[1] - es_actual.y[0];
             if (panel_img.picos == null)
@@ -4667,35 +4730,79 @@ namespace ExploraFITS
             {
                 panel_img.picos.Clear();
             }
+            double media;
+            int desde;
+            int hasta;
+
+            // Un 10% de los datos para calcular el valor medio
+
+            int rango_x = (int)(RANGO_X * es_actual.x.Length) / 2;
+            if (rango_x < 2) rango_x = 2;
             int i = 1;
+            double var;
+            double varpu;
             while (i < es_actual.x.Length)
             {
                 var = es_actual.y[i] - es_actual.y[i - 1];
-                if (var > 0 && tendencia == 1 || var < 0 && tendencia == 0)
+                varpu = Math.Abs(var) / es_actual.y[i - 1];
+                if (varpu > dif_significativa)
                 {
-                    // Se mantiene la tendencia
-
-                    var_acu += tendencia == 0 ? -var : var;
-                }
-                else
-                {
-                    // Cambio de tendencia
-
-                    if (var_acu >= min)
+                    if (var > 0 && tendencia == 1 || var < 0 && tendencia == 0)
                     {
-                        // Un nuevo pico
+                        // Se mantiene la tendencia
 
-                        panel_img.picos.Add(new Form2.Pico(i, var_acu));
-
-                        // Continuar con la nueva tendencia hasta el siguiente cambio de tendencia
-
-                        do
-                        {
-                            i++;
-                            var = es_actual.y[i] - es_actual.y[i - 1];
-                        } while (var > 0 && tendencia == 1 || var < 0 && tendencia == 0);
+                        var_acu += tendencia == 0 ? -var : var;
                     }
-                    var_acu = 0;
+                    else
+                    {
+
+                        // Cambio de tendencia
+
+                        if (var_acu >= min)
+                        {
+                            // Sólo es un pico si se separa de la media (en un rango de X) en más de min/2
+
+                            media = 0;
+                            desde = i - rango_x;
+                            if (desde < 0) desde = 0;
+                            hasta = i + rango_x;
+                            if (hasta > es_actual.x.Length) hasta = es_actual.x.Length;
+                            for (int k = desde; k < hasta; k++)
+                            {
+                                media += es_actual.y[k];
+                            }
+                            media /= (hasta - desde);
+                            if (Math.Abs(es_actual.y[i - 1] - media) > min / 2)
+                            {
+                                // Un nuevo pico
+
+                                if (tendencia == 0) var_acu = -var_acu;
+                                panel_img.picos.Add(new Form2.Pico(i - 1, var_acu));
+                            }
+
+                            // Continuar con la nueva tendencia hasta el siguiente cambio de tendencia
+
+                            if (i < es_actual.x.Length - 1)
+                            {
+                                do
+                                {
+                                    i++;
+                                    var = es_actual.y[i] - es_actual.y[i - 1];
+                                    varpu = Math.Abs(var) / es_actual.y[i - 1];
+
+                                    // 'tendencia' tiene el valor anterior al cambio
+
+                                    if (varpu > dif_significativa)
+                                    {
+                                        if (var < 0 && tendencia == 0 || var > 0 && tendencia == 1) break;
+                                    }
+
+                                } while (i < es_actual.x.Length - 1);
+                            }
+                        }
+                        tendencia = var > 0 ? 1 : 0;    // 1 = crece
+                        var_acu = tendencia == 0 ? -var : var;
+                    }
                 }
                 i++;
             }

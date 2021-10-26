@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
@@ -215,10 +216,15 @@ namespace ExploraFITS
             // Interfaz espectro
 
             b_limpiar.Location = new Point(b_redibuja.Location.X - b_limpiar.Width - 4, sup);
-            b_picos.Location = new Point(b_limpiar.Location.X - b_picos.Width - 4, sup);
-            v_hueco.Location = new Point(b_picos.Location.X - v_hueco.Width - 4, sup + 6);
-            v_z.Location = new Point(v_hueco.Location.X - v_z.Width - 4, sup + 6);
-            lista_elegidas.Location = new Point(v_z.Location.X - lista_elegidas.Width - 4, sup + 6);
+            lista_picos.Location = new Point(b_limpiar.Location.X - lista_picos.Width - 4, sup + 6);
+            b_picos.Location = new Point(lista_picos.Location.X - b_picos.Width - 4, sup);
+            v_significativa.Location = new Point(b_picos.Location.X - v_significativa.Width - 4, sup + 6);
+            r_significativa.Location = new Point(v_significativa.Location.X - r_significativa.Width - 4, sup + 8);
+            v_hueco.Location = new Point(r_significativa.Location.X - v_hueco.Width - 4, sup + 6);
+            r_hueco.Location = new Point(v_hueco.Location.X - r_hueco.Width - 4, sup + 8);
+            v_z.Location = new Point(r_hueco.Location.X - v_z.Width - 4, sup + 6);
+            r_z.Location = new Point(v_z.Location.X - r_z.Width - 4, sup + 8);
+            lista_elegidas.Location = new Point(r_z.Location.X - lista_elegidas.Width - 4, sup + 6);
             lista_elegibles.Location = new Point(lista_elegidas.Location.X - lista_elegibles.Width - 4, sup + 6);
 
             // Lienzo
@@ -231,9 +237,6 @@ namespace ExploraFITS
             lienzo.Size = new Size(ancho_lienzo, alto_lienzo);
 
             r_y.Text = string.Empty;
-            /*r_y.Refresh();
-            r_nombre_marca_1.Text = string.Empty;
-            r_nombre_marca_2.Text = string.Empty;*/
 
             IniciaControles();
             LeeEspectros();
@@ -308,14 +311,20 @@ namespace ExploraFITS
             b_escalar_ok.Visible = false;
             b_picos.Visible = false;
             b_limpiar.Visible = false;
+            r_hueco.Visible = false;
             v_hueco.Visible = false;
+            r_significativa.Visible = false;
+            v_significativa.Visible = false;
+            r_z.Visible = false;
             v_z.Visible = false;
+            lista_picos.Visible = false;
             lista_elegibles.Visible = false;
             lista_elegidas.Visible = false;
             FinEscalar();
             if (picos != null) picos.Clear();
             if (cimas != null) cimas.Clear();
             lista_elegidas.Items.Clear();
+            lista_picos.Items.Clear();
         }
         public void SelInterfaz(int cual)
         {
@@ -339,10 +348,15 @@ namespace ExploraFITS
 
             b_picos.Visible = !que;
             b_limpiar.Visible = !que;
+            r_hueco.Visible = !que;
             v_hueco.Visible = !que;
+            r_significativa.Visible = !que;
+            v_significativa.Visible = !que;
+            r_z.Visible = !que;
             v_z.Visible = !que;
             lista_elegibles.Visible = !que;
             lista_elegidas.Visible = !que;
+            lista_picos.Visible = !que;
         }
         private void R_y_Paint(object sender, PaintEventArgs e)
         {
@@ -1182,6 +1196,35 @@ namespace ExploraFITS
                     // Añadir la línea atómica más cercana
 
                     AddLineaAtomica(ce.x);
+                    Console.Beep();
+                }
+                else if (ModifierKeys.HasFlag(Keys.Alt))
+                {
+                    // Añadir un pico
+
+                    double xm;
+                    double xma = -1;
+                    for (int i = 0; i < fits.es_actual.x.Length; i++)
+                    {
+                        xm = fits.es_actual.x[i];
+                        if (xm > ce.x)
+                        {
+                            if (picos == null) picos = new List<Pico>();
+                            int ind_lista;
+                            if (Math.Abs(xm - ce.x) < Math.Abs(xma - ce.x))
+                            {
+                                ind_lista = lista_picos.Items.Add(string.Format("{0,10:f3}  {1}", xm, 0));
+                                picos.Insert(ind_lista, new Pico(i, 0));
+                            }
+                            else
+                            {
+                                ind_lista = lista_picos.Items.Add(string.Format("{0,10:f3}  {1}", xma, 0));
+                                picos.Insert(ind_lista, new Pico(i - 1, 0));
+                            }
+                            break;
+                        }
+                        xma = xm;
+                    }
                     Console.Beep();
                 }
                 return;
@@ -3367,12 +3410,36 @@ namespace ExploraFITS
         {
             if (lista_elegidas.SelectedItem != null && lista_elegidas.SelectedIndex >= 0) lista_elegidas.Items.RemoveAt(lista_elegidas.SelectedIndex);
         }
+        private void Lista_elegidas_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (ModifierKeys.HasFlag(Keys.Control))
+            {
+                double z = v_z.Text.Trim().Length == 0 ? 0 : Convert.ToDouble(v_z.Text.Trim().Replace(fits.s_millar, fits.s_decimal));
+                double inv_1mz = 1 / (1 + z);
+                StringBuilder sb = new StringBuilder();
+                double xm;
+                string linea;
+                for (int i = 0; i < lista_elegidas.Items.Count; i++)
+                {
+                    linea = lista_elegidas.Items[i].ToString();
+                    xm = Convert.ToDouble(linea.Substring(0, 10).Trim());
+                    sb.AppendFormat("{0};{1}\n", xm, linea[10..].Trim());
+                }
+                Clipboard.SetText(sb.ToString());
+                Console.Beep();
+                return;
+            }
+        }
         private void B_picos_Click(object sender, EventArgs e)
         {
             bool ctrl = ModifierKeys.HasFlag(Keys.Control);
             fits.BuscaPicos();
             if (picos.Count > 0)
             {
+                foreach (Pico p in picos)
+                {
+                    lista_picos.Items.Add(string.Format("{0,10:f3}  {1}", fits.es_actual.x[p.indice], p.valor));
+                }
                 if (ctrl)
                 {
                     foreach (Pico p in picos)
@@ -3388,6 +3455,7 @@ namespace ExploraFITS
         private void B_limpiar_Click(object sender, EventArgs e)
         {
             if (picos != null) picos.Clear();
+            lista_picos.Items.Clear();
             lista_elegidas.Items.Clear();
             if (fits.NAXIS == 3) Redibuja(i3);
             else Redibuja();
@@ -3414,6 +3482,32 @@ namespace ExploraFITS
                     break;
                 }
                 xma = xm;
+            }
+        }
+        private void Lista_picos_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (lista_picos.SelectedItem != null && lista_picos.SelectedIndex >= 0)
+            {
+                picos.RemoveAt(lista_picos.SelectedIndex);
+                lista_picos.Items.RemoveAt(lista_picos.SelectedIndex);
+            }
+        }
+        private void Lista_picos_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (ModifierKeys.HasFlag(Keys.Control))
+            {
+                double z = v_z.Text.Trim().Length == 0 ? 0 : Convert.ToDouble(v_z.Text.Trim().Replace(fits.s_millar, fits.s_decimal));
+                double inv_1mz = 1 / (1 + z);
+                StringBuilder sb = new StringBuilder();
+                double xm;
+                for (int i = 0; i < picos.Count; i++)
+                {
+                    xm = fits.es_actual.x[picos[i].indice] * inv_1mz;
+                    sb.AppendFormat("{0};{1}\n", xm, picos[i].valor);
+                }
+                Clipboard.SetText(sb.ToString());
+                Console.Beep();
+                return;
             }
         }
     }

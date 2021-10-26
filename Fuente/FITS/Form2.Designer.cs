@@ -78,6 +78,11 @@ namespace ExploraFITS
             this.b_picos = new System.Windows.Forms.Button();
             this.v_hueco = new System.Windows.Forms.TextBox();
             this.b_limpiar = new System.Windows.Forms.Button();
+            this.lista_picos = new System.Windows.Forms.ComboBox();
+            this.v_significativa = new System.Windows.Forms.TextBox();
+            this.r_z = new System.Windows.Forms.Label();
+            this.r_hueco = new System.Windows.Forms.Label();
+            this.r_significativa = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.lienzo)).BeginInit();
             this.SuspendLayout();
             // 
@@ -527,16 +532,17 @@ namespace ExploraFITS
             // lista_elegidas
             // 
             this.lista_elegidas.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.lista_elegidas.Location = new System.Drawing.Point(1532, 293);
+            this.lista_elegidas.Location = new System.Drawing.Point(1120, 293);
             this.lista_elegidas.Name = "lista_elegidas";
             this.lista_elegidas.Size = new System.Drawing.Size(139, 28);
             this.lista_elegidas.TabIndex = 74;
             this.lista_elegidas.SelectedIndexChanged += new System.EventHandler(this.Lineas_elegidas_SelectedIndexChanged);
+            this.lista_elegidas.MouseDown += new System.Windows.Forms.MouseEventHandler(this.Lista_elegidas_MouseDown);
             // 
             // lista_elegibles
             // 
             this.lista_elegibles.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.lista_elegibles.Location = new System.Drawing.Point(1389, 293);
+            this.lista_elegibles.Location = new System.Drawing.Point(977, 293);
             this.lista_elegibles.Name = "lista_elegibles";
             this.lista_elegibles.Size = new System.Drawing.Size(139, 28);
             this.lista_elegibles.TabIndex = 75;
@@ -544,7 +550,7 @@ namespace ExploraFITS
             // 
             // v_z
             // 
-            this.v_z.Location = new System.Drawing.Point(1677, 293);
+            this.v_z.Location = new System.Drawing.Point(1290, 293);
             this.v_z.Name = "v_z";
             this.v_z.Size = new System.Drawing.Size(57, 27);
             this.v_z.TabIndex = 76;
@@ -553,7 +559,7 @@ namespace ExploraFITS
             // b_picos
             // 
             this.b_picos.Image = ((System.Drawing.Image)(resources.GetObject("b_picos.Image")));
-            this.b_picos.Location = new System.Drawing.Point(1802, 284);
+            this.b_picos.Location = new System.Drawing.Point(1614, 284);
             this.b_picos.Name = "b_picos";
             this.b_picos.Size = new System.Drawing.Size(42, 42);
             this.b_picos.TabIndex = 77;
@@ -562,10 +568,11 @@ namespace ExploraFITS
             // 
             // v_hueco
             // 
-            this.v_hueco.Location = new System.Drawing.Point(1739, 292);
+            this.v_hueco.Location = new System.Drawing.Point(1425, 292);
             this.v_hueco.Name = "v_hueco";
             this.v_hueco.Size = new System.Drawing.Size(57, 27);
             this.v_hueco.TabIndex = 78;
+            this.v_hueco.Text = "25";
             this.v_hueco.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             // 
             // b_limpiar
@@ -578,11 +585,66 @@ namespace ExploraFITS
             this.b_limpiar.UseVisualStyleBackColor = true;
             this.b_limpiar.Click += new System.EventHandler(this.B_limpiar_Click);
             // 
+            // lista_picos
+            // 
+            this.lista_picos.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.lista_picos.Location = new System.Drawing.Point(1661, 292);
+            this.lista_picos.Name = "lista_picos";
+            this.lista_picos.Size = new System.Drawing.Size(183, 28);
+            this.lista_picos.Sorted = true;
+            this.lista_picos.TabIndex = 80;
+            this.lista_picos.SelectedIndexChanged += new System.EventHandler(this.Lista_picos_SelectedIndexChanged);
+            this.lista_picos.MouseDown += new System.Windows.Forms.MouseEventHandler(this.Lista_picos_MouseDown);
+            // 
+            // v_significativa
+            // 
+            this.v_significativa.Location = new System.Drawing.Point(1551, 292);
+            this.v_significativa.Name = "v_significativa";
+            this.v_significativa.Size = new System.Drawing.Size(57, 27);
+            this.v_significativa.TabIndex = 81;
+            this.v_significativa.Text = "2";
+            this.v_significativa.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            // 
+            // r_z
+            // 
+            this.r_z.AutoSize = true;
+            this.r_z.Location = new System.Drawing.Point(1265, 297);
+            this.r_z.Name = "r_z";
+            this.r_z.Size = new System.Drawing.Size(16, 20);
+            this.r_z.TabIndex = 82;
+            this.r_z.Text = "z";
+            this.r_z.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // r_hueco
+            // 
+            this.r_hueco.AutoSize = true;
+            this.r_hueco.Location = new System.Drawing.Point(1353, 297);
+            this.r_hueco.Name = "r_hueco";
+            this.r_hueco.Size = new System.Drawing.Size(66, 20);
+            this.r_hueco.TabIndex = 83;
+            this.r_hueco.Text = "Inc Y (%)";
+            this.r_hueco.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // r_significativa
+            // 
+            this.r_significativa.AutoSize = true;
+            this.r_significativa.Location = new System.Drawing.Point(1492, 297);
+            this.r_significativa.Name = "r_significativa";
+            this.r_significativa.Size = new System.Drawing.Size(53, 20);
+            this.r_significativa.TabIndex = 84;
+            this.r_significativa.Text = "=Y (%)";
+            this.r_significativa.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
             // Form2
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1950, 1306);
+            this.Controls.Add(this.r_significativa);
+            this.Controls.Add(this.r_hueco);
+            this.Controls.Add(this.r_z);
+            this.Controls.Add(this.v_significativa);
+            this.Controls.Add(this.lista_picos);
             this.Controls.Add(this.b_limpiar);
             this.Controls.Add(this.v_hueco);
             this.Controls.Add(this.b_picos);
@@ -696,5 +758,10 @@ namespace ExploraFITS
         public System.Windows.Forms.Button b_picos;
         public System.Windows.Forms.TextBox v_hueco;
         public System.Windows.Forms.Button b_limpiar;
+        public System.Windows.Forms.ComboBox lista_picos;
+        public System.Windows.Forms.TextBox v_significativa;
+        private System.Windows.Forms.Label r_z;
+        private System.Windows.Forms.Label r_hueco;
+        private System.Windows.Forms.Label r_significativa;
     }
 }
