@@ -83,6 +83,8 @@ namespace ExploraFITS
             this.r_z = new System.Windows.Forms.Label();
             this.r_hueco = new System.Windows.Forms.Label();
             this.r_significativa = new System.Windows.Forms.Label();
+            this.r_movil = new System.Windows.Forms.Label();
+            this.v_movil = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.lienzo)).BeginInit();
             this.SuspendLayout();
             // 
@@ -532,7 +534,7 @@ namespace ExploraFITS
             // lista_elegidas
             // 
             this.lista_elegidas.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.lista_elegidas.Location = new System.Drawing.Point(1120, 293);
+            this.lista_elegidas.Location = new System.Drawing.Point(1030, 293);
             this.lista_elegidas.Name = "lista_elegidas";
             this.lista_elegidas.Size = new System.Drawing.Size(139, 28);
             this.lista_elegidas.TabIndex = 74;
@@ -542,7 +544,7 @@ namespace ExploraFITS
             // lista_elegibles
             // 
             this.lista_elegibles.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.lista_elegibles.Location = new System.Drawing.Point(977, 293);
+            this.lista_elegibles.Location = new System.Drawing.Point(887, 293);
             this.lista_elegibles.Name = "lista_elegibles";
             this.lista_elegibles.Size = new System.Drawing.Size(139, 28);
             this.lista_elegibles.TabIndex = 75;
@@ -550,7 +552,7 @@ namespace ExploraFITS
             // 
             // v_z
             // 
-            this.v_z.Location = new System.Drawing.Point(1290, 293);
+            this.v_z.Location = new System.Drawing.Point(1200, 293);
             this.v_z.Name = "v_z";
             this.v_z.Size = new System.Drawing.Size(57, 27);
             this.v_z.TabIndex = 76;
@@ -568,11 +570,11 @@ namespace ExploraFITS
             // 
             // v_hueco
             // 
-            this.v_hueco.Location = new System.Drawing.Point(1425, 292);
+            this.v_hueco.Location = new System.Drawing.Point(1444, 292);
             this.v_hueco.Name = "v_hueco";
-            this.v_hueco.Size = new System.Drawing.Size(57, 27);
+            this.v_hueco.Size = new System.Drawing.Size(49, 27);
             this.v_hueco.TabIndex = 78;
-            this.v_hueco.Text = "25";
+            this.v_hueco.Text = "20";
             this.v_hueco.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             // 
             // b_limpiar
@@ -598,9 +600,9 @@ namespace ExploraFITS
             // 
             // v_significativa
             // 
-            this.v_significativa.Location = new System.Drawing.Point(1551, 292);
+            this.v_significativa.Location = new System.Drawing.Point(1560, 292);
             this.v_significativa.Name = "v_significativa";
-            this.v_significativa.Size = new System.Drawing.Size(57, 27);
+            this.v_significativa.Size = new System.Drawing.Size(49, 27);
             this.v_significativa.TabIndex = 81;
             this.v_significativa.Text = "2";
             this.v_significativa.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
@@ -608,7 +610,7 @@ namespace ExploraFITS
             // r_z
             // 
             this.r_z.AutoSize = true;
-            this.r_z.Location = new System.Drawing.Point(1265, 297);
+            this.r_z.Location = new System.Drawing.Point(1175, 297);
             this.r_z.Name = "r_z";
             this.r_z.Size = new System.Drawing.Size(16, 20);
             this.r_z.TabIndex = 82;
@@ -618,7 +620,7 @@ namespace ExploraFITS
             // r_hueco
             // 
             this.r_hueco.AutoSize = true;
-            this.r_hueco.Location = new System.Drawing.Point(1353, 297);
+            this.r_hueco.Location = new System.Drawing.Point(1372, 297);
             this.r_hueco.Name = "r_hueco";
             this.r_hueco.Size = new System.Drawing.Size(66, 20);
             this.r_hueco.TabIndex = 83;
@@ -628,18 +630,38 @@ namespace ExploraFITS
             // r_significativa
             // 
             this.r_significativa.AutoSize = true;
-            this.r_significativa.Location = new System.Drawing.Point(1492, 297);
+            this.r_significativa.Location = new System.Drawing.Point(1501, 297);
             this.r_significativa.Name = "r_significativa";
             this.r_significativa.Size = new System.Drawing.Size(53, 20);
             this.r_significativa.TabIndex = 84;
             this.r_significativa.Text = "=Y (%)";
             this.r_significativa.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
+            // r_movil
+            // 
+            this.r_movil.AutoSize = true;
+            this.r_movil.Location = new System.Drawing.Point(1262, 297);
+            this.r_movil.Name = "r_movil";
+            this.r_movil.Size = new System.Drawing.Size(46, 20);
+            this.r_movil.TabIndex = 86;
+            this.r_movil.Text = "Movil";
+            // 
+            // v_movil
+            // 
+            this.v_movil.Location = new System.Drawing.Point(1316, 293);
+            this.v_movil.Name = "v_movil";
+            this.v_movil.Size = new System.Drawing.Size(49, 27);
+            this.v_movil.TabIndex = 85;
+            this.v_movil.Text = "3";
+            this.v_movil.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            // 
             // Form2
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1950, 1306);
+            this.Controls.Add(this.r_movil);
+            this.Controls.Add(this.v_movil);
             this.Controls.Add(this.r_significativa);
             this.Controls.Add(this.r_hueco);
             this.Controls.Add(this.r_z);
@@ -763,5 +785,7 @@ namespace ExploraFITS
         private System.Windows.Forms.Label r_z;
         private System.Windows.Forms.Label r_hueco;
         private System.Windows.Forms.Label r_significativa;
+        private System.Windows.Forms.Label r_movil;
+        public System.Windows.Forms.TextBox v_movil;
     }
 }

@@ -47,7 +47,7 @@ namespace ExploraFits
                     {
                         ni = Convert.ToInt32(sid.Substring(0, id1++));
                         nm = Convert.ToInt32(sid[id1..id2]);
-                        if (ni >= Idioma.NUMIDIOMAS || nm >= Idioma.NUMMSGIDIOMAS)
+                        if (ni >= NUMIDIOMAS || nm >= NUMMSGIDIOMAS)
                         {
                             f.Close();
                             return 3;
@@ -65,7 +65,7 @@ namespace ExploraFits
                             f.Close();
                             return 5;
                         }
-                        Idioma.msg[ni, nm] = id2 == id1 ? string.Empty : sms[id1..id2];
+                        msg[ni, nm] = (id2 == id1) ? string.Empty : sms[id1..id2];
                     }
                     catch
                     {
@@ -75,11 +75,11 @@ namespace ExploraFits
                 }
             }
             f.Close();
-            for (ni = 0; ni < Idioma.NUMIDIOMAS; ni++)
+            for (ni = 0; ni < NUMIDIOMAS; ni++)
             {
-                for (nm = 0; nm < Idioma.NUMMSGIDIOMAS; nm++)
+                for (nm = 0; nm < NUMMSGIDIOMAS; nm++)
                 {
-                    if (Idioma.msg[ni, nm] == null) return 7;
+                    if (msg[ni, nm] == null) return 7;
                 }
             }
             return -1;

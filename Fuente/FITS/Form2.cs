@@ -222,7 +222,9 @@ namespace ExploraFITS
             r_significativa.Location = new Point(v_significativa.Location.X - r_significativa.Width - 4, sup + 8);
             v_hueco.Location = new Point(r_significativa.Location.X - v_hueco.Width - 4, sup + 6);
             r_hueco.Location = new Point(v_hueco.Location.X - r_hueco.Width - 4, sup + 8);
-            v_z.Location = new Point(r_hueco.Location.X - v_z.Width - 4, sup + 6);
+            v_movil.Location = new Point(r_hueco.Location.X - v_movil.Width - 4, sup + 6);
+            r_movil.Location = new Point(v_movil.Location.X - r_movil.Width - 4, sup + 8);
+            v_z.Location = new Point(r_movil.Location.X - v_z.Width - 4, sup + 6);
             r_z.Location = new Point(v_z.Location.X - r_z.Width - 4, sup + 8);
             lista_elegidas.Location = new Point(r_z.Location.X - lista_elegidas.Width - 4, sup + 6);
             lista_elegibles.Location = new Point(lista_elegidas.Location.X - lista_elegibles.Width - 4, sup + 6);
@@ -315,6 +317,8 @@ namespace ExploraFITS
             v_hueco.Visible = false;
             r_significativa.Visible = false;
             v_significativa.Visible = false;
+            r_movil.Visible = false;
+            v_movil.Visible = false;
             r_z.Visible = false;
             v_z.Visible = false;
             lista_picos.Visible = false;
@@ -352,6 +356,8 @@ namespace ExploraFITS
             v_hueco.Visible = !que;
             r_significativa.Visible = !que;
             v_significativa.Visible = !que;
+            r_movil.Visible = !que;
+            v_movil.Visible = !que;
             r_z.Visible = !que;
             v_z.Visible = !que;
             lista_elegibles.Visible = !que;
@@ -1985,7 +1991,7 @@ namespace ExploraFITS
                             suma += fits.histograma[i];
                             if (suma >= suma_max)
                             {
-                                min_acotado = i == 0 ? 0 : (i - 1) * ancho_valor_histograma;
+                                min_acotado = (i == 0) ? 0 : (i - 1) * ancho_valor_histograma;
                                 break;
                             }
                         }
@@ -2110,9 +2116,9 @@ namespace ExploraFITS
                         flujo[n++] = (byte)(color_cota_sup.R >> 3);
                         return n;
                     }
-                    if (fits.raiz.Checked) val = Math.Sqrt(val < 0 ? 0 : val);
-                    canal_byte_bajo = (byte)((ushort)(val < 0 ? 0 : val) & 255);
-                    canal_byte_alto = (byte)((ushort)(val < 0 ? 0 : val) >> 3);
+                    if (fits.raiz.Checked) val = Math.Sqrt((val < 0) ? 0 : val);
+                    canal_byte_bajo = (byte)((ushort)((val < 0) ? 0 : val) & 255);
+                    canal_byte_alto = (byte)((ushort)((val < 0) ? 0 : val) >> 3);
                     flujo[n++] = canal_byte_bajo;
                     flujo[n++] = canal_byte_alto;
                     flujo[n++] = canal_byte_bajo;
@@ -2142,7 +2148,7 @@ namespace ExploraFITS
                     return n;
                 }
                 if (fits.raiz.Checked) val = Math.Sqrt(val < 0 ? 0 : val);
-                ushort valus = (ushort)(((val < 0 ? 0 : val) - estadistica.min_acotado) * estadistica.fp);
+                ushort valus = (ushort)((((val < 0) ? 0 : val) - estadistica.min_acotado) * estadistica.fp);
                 canal_byte_bajo = (byte)(valus & 255);
                 canal_byte_alto = (byte)(valus >> 8);
                 flujo[n++] = canal_byte_bajo;
@@ -2180,8 +2186,8 @@ namespace ExploraFITS
                     flujo[n++] = color_cota_sup.R;
                     return n;
                 }
-                if (fits.raiz.Checked) val = Math.Sqrt(val < 0 ? 0 : val);
-                flujo[n++] = canal = (byte)(val < 0 ? 0 : val);
+                if (fits.raiz.Checked) val = Math.Sqrt((val < 0) ? 0 : val);
+                flujo[n++] = canal = (byte)((val < 0) ? 0 : val);
                 flujo[n++] = canal;
                 flujo[n++] = canal;
                 return n;
@@ -2200,8 +2206,8 @@ namespace ExploraFITS
                 flujo[n++] = color_cota_sup.R;
                 return n;
             }
-            if (fits.raiz.Checked) val = Math.Sqrt(val < 0 ? 0 : val);
-            canal = (byte)(estadistica.fp * (val < 0 ? 0 : val - estadistica.min_acotado));
+            if (fits.raiz.Checked) val = Math.Sqrt((val < 0) ? 0 : val);
+            canal = (byte)(estadistica.fp * ((val < 0) ? 0 : val - estadistica.min_acotado));
 
             // Blue, Green, Red
 
@@ -3028,13 +3034,6 @@ namespace ExploraFITS
             string s = v_brillo.Text;
             v_brillo.Text = string.Format("{0:N0}", n);
             Application.DoEvents();
-
-            /*int pases = multiplicador_y == 1 ? fits.NAXISn[1] / 3 : fits.NAXISn[1];
-            for (int i2 = 0; i2 < pases; i2++)
-            {
-                Prueba(ref n);
-            }*/
-
             if (fits.invertir_y.Checked)
             {
                 for (int i2 = fits.NAXISn[1] - 1; i2 >= 0; i2--)
@@ -3414,7 +3413,7 @@ namespace ExploraFITS
         {
             if (ModifierKeys.HasFlag(Keys.Control))
             {
-                double z = v_z.Text.Trim().Length == 0 ? 0 : Convert.ToDouble(v_z.Text.Trim().Replace(fits.s_millar, fits.s_decimal));
+                double z = (v_z.Text.Trim().Length == 0) ? 0 : Convert.ToDouble(v_z.Text.Trim().Replace(fits.s_millar, fits.s_decimal));
                 double inv_1mz = 1 / (1 + z);
                 StringBuilder sb = new StringBuilder();
                 double xm;
@@ -3496,7 +3495,7 @@ namespace ExploraFITS
         {
             if (ModifierKeys.HasFlag(Keys.Control))
             {
-                double z = v_z.Text.Trim().Length == 0 ? 0 : Convert.ToDouble(v_z.Text.Trim().Replace(fits.s_millar, fits.s_decimal));
+                double z = (v_z.Text.Trim().Length == 0) ? 0 : Convert.ToDouble(v_z.Text.Trim().Replace(fits.s_millar, fits.s_decimal));
                 double inv_1mz = 1 / (1 + z);
                 StringBuilder sb = new StringBuilder();
                 double xm;
