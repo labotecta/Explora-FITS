@@ -85,6 +85,7 @@ namespace ExploraFITS
             this.r_significativa = new System.Windows.Forms.Label();
             this.r_movil = new System.Windows.Forms.Label();
             this.v_movil = new System.Windows.Forms.TextBox();
+            this.S_simplifica = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.lienzo)).BeginInit();
             this.SuspendLayout();
             // 
@@ -655,11 +656,22 @@ namespace ExploraFITS
             this.v_movil.Text = "3";
             this.v_movil.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
             // 
+            // S_simplifica
+            // 
+            this.S_simplifica.AutoSize = true;
+            this.S_simplifica.Location = new System.Drawing.Point(1850, 332);
+            this.S_simplifica.Name = "S_simplifica";
+            this.S_simplifica.Size = new System.Drawing.Size(97, 24);
+            this.S_simplifica.TabIndex = 88;
+            this.S_simplifica.Text = "Simplifica";
+            this.S_simplifica.UseVisualStyleBackColor = true;
+            // 
             // Form2
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1950, 1306);
+            this.Controls.Add(this.S_simplifica);
             this.Controls.Add(this.r_movil);
             this.Controls.Add(this.v_movil);
             this.Controls.Add(this.r_significativa);
@@ -787,5 +799,6 @@ namespace ExploraFITS
         private System.Windows.Forms.Label r_significativa;
         private System.Windows.Forms.Label r_movil;
         public System.Windows.Forms.TextBox v_movil;
+        public System.Windows.Forms.CheckBox S_simplifica;
     }
 }

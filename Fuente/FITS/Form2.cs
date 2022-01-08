@@ -150,11 +150,11 @@ namespace ExploraFITS
              68,  74,  77,  81,  85,  88,  90,  92,  93,  94,  95,  96,  97,  98, 100, 105, 107, 108, 110, 115,
             117, 118, 124, 125, 130, 140, 151, 153, 155, 161, 168, 169, 171, 173, 178, 184, 194, 204
         };
-        public class RegLineal
+        public class RegLinealSimple
         {
             public double a;
             public double m;
-            public RegLineal(double a, double m)
+            public RegLinealSimple(double a, double m)
             {
                 this.a = a;
                 this.m = m;
@@ -216,6 +216,7 @@ namespace ExploraFITS
             // Interfaz espectro
 
             b_limpiar.Location = new Point(b_redibuja.Location.X - b_limpiar.Width - 4, sup);
+            S_simplifica.Location = new Point(b_redibuja.Location.X - b_limpiar.Width - 4, sup + b_limpiar.Height + 4);
             lista_picos.Location = new Point(b_limpiar.Location.X - lista_picos.Width - 4, sup + 6);
             b_picos.Location = new Point(lista_picos.Location.X - b_picos.Width - 4, sup);
             v_significativa.Location = new Point(b_picos.Location.X - v_significativa.Width - 4, sup + 6);
@@ -266,6 +267,7 @@ namespace ExploraFITS
             sel_catalogo.Items.Add(Idioma.msg[Idioma.lengua, 27]);
             sel_catalogo.Items.Add(Idioma.msg[Idioma.lengua, 28]);
             sel_catalogo.Items.Add(Idioma.msg[Idioma.lengua, 29]);
+            S_simplifica.Text = Idioma.msg[Idioma.lengua, 138];
         }
         public void IniciaControles()
         {
@@ -312,6 +314,7 @@ namespace ExploraFITS
             b_escalar_esc.Visible = false;
             b_escalar_ok.Visible = false;
             b_picos.Visible = false;
+            S_simplifica.Visible = false;
             b_limpiar.Visible = false;
             r_hueco.Visible = false;
             v_hueco.Visible = false;
@@ -351,6 +354,7 @@ namespace ExploraFITS
             b_escalar_ok.Visible = que;
 
             b_picos.Visible = !que;
+            S_simplifica.Visible = !que;
             b_limpiar.Visible = !que;
             r_hueco.Visible = !que;
             v_hueco.Visible = !que;
@@ -844,11 +848,11 @@ namespace ExploraFITS
         {
             fits.CRPIX[0] = 1;
             fits.CRPIX[1] = 1;
-            RegLineal rl;
-            rl = RegresionLineal(escalar_pixelx, escalar_ar, escalar_n_puntos);
+            RegLinealSimple rl;
+            rl = RegresionLinealSimple(escalar_pixelx, escalar_ar, escalar_n_puntos);
             fits.CDELT[0] = rl.m;
             fits.CRVAL[0] = rl.a;
-            rl = RegresionLineal(escalar_pixely, escalar_de, escalar_n_puntos);
+            rl = RegresionLinealSimple(escalar_pixely, escalar_de, escalar_n_puntos);
             fits.CDELT[1] = rl.m;
             fits.CRVAL[1] = rl.a;
 
@@ -3365,7 +3369,7 @@ namespace ExploraFITS
             }
         }
 
-        private RegLineal RegresionLineal(double[] x, double[] y, int n)
+        private RegLinealSimple RegresionLinealSimple(double[] x, double[] y, int n)
         {
             double a;
             double m;
@@ -3398,7 +3402,7 @@ namespace ExploraFITS
             //double r = rNumerator / Math.Sqrt(rDenom);
             //double r2 = r * r;
 
-            return new RegLineal(a, m);
+            return new RegLinealSimple(a, m);
         }
 
         private void Lineas_elegibles_SelectedIndexChanged(object sender, EventArgs e)
@@ -3432,7 +3436,14 @@ namespace ExploraFITS
         private void B_picos_Click(object sender, EventArgs e)
         {
             bool ctrl = ModifierKeys.HasFlag(Keys.Control);
-            fits.BuscaPicos();
+            if (S_simplifica.Checked)
+            {
+                fits.BuscaPicosSimplificado();
+            }
+            else
+            {
+                fits.BuscaPicos();
+            }
             if (picos.Count > 0)
             {
                 foreach (Pico p in picos)

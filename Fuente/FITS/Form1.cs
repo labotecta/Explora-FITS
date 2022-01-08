@@ -220,6 +220,12 @@ namespace ExploraFITS
         public int[] histograma;
         public Bitmap img;
 
+        private const double MIN_DEFECTO = 0.25;
+        private const double RANGO_X = 0.02;
+        private const int MIN_RANGO_X = 3;
+        private const int DIF_MIN_ENTORNO = 3;
+        private readonly RegresionLineal regLin = new RegresionLineal();
+
         public Form2 panel_img;
 
         public string fichero_hyperleda;
@@ -510,6 +516,7 @@ namespace ExploraFITS
             panel_img.b_ficha_sao.Enabled = que;
             if (!panel_img.escalando) panel_img.b_escalar.Enabled = que;
             panel_img.b_picos.Enabled = que;
+            panel_img.S_simplifica.Enabled = que;
             panel_img.b_limpiar.Enabled = que;
             panel_img.v_hueco.Enabled = que;
             panel_img.v_z.Enabled = que;
@@ -528,16 +535,17 @@ namespace ExploraFITS
         }
         private void B_exporta_imagen_Click(object sender, EventArgs e)
         {
+            Disponible(false);
             int cHDU = hdu_actual = sel_HDU.SelectedIndex;
             if (hdu[cHDU].n_imagenes == 0) return;
             SaveFileDialog ficheroescritura = new SaveFileDialog()
             {
                 Filter = "BIN (*.bin)|*.bin|TODO (*.*)|*.*",
+                Title = Idioma.msg[Idioma.lengua, 136],
                 FilterIndex = 1
             };
             if (ficheroescritura.ShowDialog() == DialogResult.OK)
             {
-                Disponible(false);
                 FileStream fe = new FileStream(ficheroescritura.FileName, FileMode.Create, FileAccess.Write, FileShare.Read);
                 BinaryWriter sw = new BinaryWriter(fe);
 
@@ -619,9 +627,30 @@ namespace ExploraFITS
                     }
                 }
                 sw.Close();
-                Disponible(true);
                 Console.Beep();
             }
+            if (es_actual != null)
+            {
+                ficheroescritura = new SaveFileDialog()
+                {
+                    Filter = "CSV (*.csv)|*.csv|TODO (*.*)|*.*",
+                    Title = Idioma.msg[Idioma.lengua, 137],
+                    FilterIndex = 1
+                };
+                if (ficheroescritura.ShowDialog() == DialogResult.OK)
+                {
+                    FileStream fet = new FileStream(ficheroescritura.FileName, FileMode.Create, FileAccess.Write, FileShare.Read);
+                    StreamWriter swt = new StreamWriter(fet);
+                    swt.WriteLine("W;F");
+                    for (int i = 0; i < es_actual.x.Length; i++)
+                    {
+                        swt.WriteLine("{0};{1}", es_actual.x[i], es_actual.y[i]);
+                    }
+                    swt.Close();
+                    Console.Beep();
+                }
+            }
+            Disponible(true);
         }
         private void B_exporta_cabeceras_Click(object sender, EventArgs e)
         {
@@ -2377,7 +2406,6 @@ namespace ExploraFITS
             }
             return new DateTime(3000, 1, 1);
         }
-
         private void B_exporta_tabla_Click(object sender, EventArgs e)
         {
             if (tabla == null || tabla.RowCount == 0) return;
@@ -2428,6 +2456,11 @@ namespace ExploraFITS
         private void Tabla_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
             int i2 = e.RowIndex;
+            if (i2 == -1)
+            {
+                MessageBox.Show(Idioma.msg[Idioma.lengua, 135], Idioma.msg[Idioma.lengua, 26], MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
             int col = e.ColumnIndex;
             int i = hdu_actual = sel_HDU.SelectedIndex;
             int r = (hdu[i].conjunto == 2) ? 1 : SubColumnas(col);
@@ -2471,40 +2504,58 @@ namespace ExploraFITS
                 Console.Beep();
             }
         }
-        private void ExportaCabeceraBin(StreamWriter sw)
+        private bool[] ExportaCabeceraBin(StreamWriter sw)
         {
+            bool[] quecols = new bool[TFIELDS];
+            int cols = tabla.SelectedColumns.Count;
+            if (cols == 0)
+            {
+                // Todas
+
+                for (int i = 0; i < TFIELDS; i++) quecols[i] = true;
+            }
+            else
+            {
+                for (int i = 0; i < TFIELDS; i++) quecols[i] = false;
+                for (int i = 0; i < cols; i++) quecols[tabla.SelectedColumns[i].Index] = true;
+            }
             int r;
             int col = 0;
             while (col < TFIELDS)
             {
-                r = SubColumnas(col);
-                if (r == -1) return;
-                if (TFORM[col].IndexOf("A") != -1) r = 1;
-                if (TTYPE != null)
+                if (quecols[col])
                 {
-                    if (r == 1) sw.Write(string.Format("{0};", TTYPE[col]));
-                    else
+                    r = SubColumnas(col);
+                    if (r == -1) return null;
+                    if (TFORM[col].IndexOf("A") != -1) r = 1;
+                    if (TTYPE != null)
                     {
-                        for (int ir = 0; ir < r; ir++) sw.Write(string.Format("{0}_{1};", TTYPE[col], ir + 1));
+                        if (r == 1) sw.Write(string.Format("{0};", TTYPE[col]));
+                        else
+                        {
+                            for (int ir = 0; ir < r; ir++) sw.Write(string.Format("{0}_{1};", TTYPE[col], ir + 1));
+                        }
                     }
-                }
-                else
-                {
-                    if (r == 1) sw.Write(string.Format("Col{0};", col + 1));
                     else
                     {
-                        for (int ir = 0; ir < r; ir++) sw.Write(string.Format("Col{0}_{1};", col + 1, ir + 1));
+                        if (r == 1) sw.Write(string.Format("Col{0};", col + 1));
+                        else
+                        {
+                            for (int ir = 0; ir < r; ir++) sw.Write(string.Format("Col{0}_{1};", col + 1, ir + 1));
+                        }
                     }
                 }
                 col++;
             }
             sw.WriteLine();
+            return quecols;
         }
         private void ExportaTablaBin(object[,] datos, StreamWriter sw)
         {
             // Cabeceras
 
-            ExportaCabeceraBin(sw);
+            bool[] quecols = ExportaCabeceraBin(sw);
+            if (quecols == null) return;
 
             // Filas
 
@@ -2513,6 +2564,7 @@ namespace ExploraFITS
             int ind;
             int i1;
             int col;
+            string cadena;
             StringBuilder sb;
             bool le = BitConverter.IsLittleEndian;
             for (int i2 = 0; i2 < NAXISn[1]; i2++)
@@ -2526,7 +2578,8 @@ namespace ExploraFITS
                         // 1 byte (lógico)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 0, 1, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 0, 1, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("X")) != -1)
                     {
@@ -2534,95 +2587,105 @@ namespace ExploraFITS
 
                         r = Rep(TFORM[col], ind);
 
+                        if (quecols[col]) sw.Write(";");
                         i1++;
-                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("B")) != -1)
                     {
                         // 1 byte (byte)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(string.Format("{0};", datos[i1++, i2].ToString()));
+                        if (quecols[col]) sw.Write(string.Format("{0};", datos[i1, i2].ToString()));
+                        i1++;
+
                     }
                     else if ((ind = TFORM[col].IndexOf("S")) != -1)
                     {
                         // 1 byte con signo (byte)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(string.Format("{0};", datos[i1++, i2].ToString()));
+                        if (quecols[col]) sw.Write(string.Format("{0};", datos[i1, i2].ToString()));
+                        i1++;
                     }
                     else if ((ind = TFORM[col].IndexOf("I")) != -1)
                     {
                         // 2 bytes (entero)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 1, 2, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 1, 2, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("U")) != -1)
                     {
                         // 2 bytes (entero sin signo)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 2, 2, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 2, 2, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("J")) != -1)
                     {
                         // 4 bytes (entero)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 3, 4, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 3, 4, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("V")) != -1)
                     {
                         // 4 bytes (entero sin signo)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 4, 4, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 4, 4, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("K")) != -1)
                     {
                         // 8 bytes (entero)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 5, 8, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 5, 8, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("E")) != -1)
                     {
                         // 4 bytes (simple precisión)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 6, 4, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 6, 4, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("D")) != -1)
                     {
                         // 8 bytes (doble precisión)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 7, 8, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 7, 8, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("C")) != -1)
                     {
                         // 8 bytes (simple precisión complejo)
 
                         r = Rep(TFORM[col], ind);
+                        if (quecols[col]) sw.Write(";");
                         i1 += 8;
-                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("M")) != -1)
                     {
                         // 16 bytes (doble precisión complejo)
 
                         r = Rep(TFORM[col], ind);
+                        if (quecols[col]) sw.Write(";");
                         i1 += 16;
-                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("P")) != -1)
                     {
                         // 8 bytes (descriptor de array)
 
                         r = Rep(TFORM[col], ind);
+                        if (quecols[col]) sw.Write(";");
                         i1 += 8;
-                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("A")) != -1)
                     {
@@ -2641,7 +2704,7 @@ namespace ExploraFITS
                             }
                         }
                         sb.Append(';');
-                        sw.Write(sb.ToString());
+                        if (quecols[col]) sw.Write(sb.ToString());
                     }
                     else
                     {
@@ -2662,7 +2725,8 @@ namespace ExploraFITS
         {
             // Cabeceras
 
-            ExportaCabeceraBin(sw);
+            bool[] quecols = ExportaCabeceraBin(sw);
+            if (quecols == null) return;
 
             // Filas
 
@@ -2671,6 +2735,7 @@ namespace ExploraFITS
             int ind;
             int i1;
             int col;
+            string cadena;
             StringBuilder sb;
             bool le = BitConverter.IsLittleEndian;
             for (int i2 = 0; i2 < NAXISn[1]; i2++)
@@ -2684,7 +2749,8 @@ namespace ExploraFITS
                         // 1 byte (lógico)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 0, 1, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 0, 1, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("X")) != -1)
                     {
@@ -2692,95 +2758,104 @@ namespace ExploraFITS
 
                         r = Rep(TFORM[col], ind);
 
+                        if (quecols[col]) sw.Write(";");
                         i1++;
-                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("B")) != -1)
                     {
                         // 1 byte (byte)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(string.Format("{0};", datos[i1++, i2]));
+                        if (quecols[col]) sw.Write(string.Format("{0};", datos[i1, i2]));
+                        i1++;
                     }
                     else if ((ind = TFORM[col].IndexOf("S")) != -1)
                     {
                         // 1 byte con signo (byte)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(string.Format("{0};", (sbyte)datos[i1++, i2]));
+                        if (quecols[col]) sw.Write(string.Format("{0};", (sbyte)datos[i1, i2]));
+                        i1++;
                     }
                     else if ((ind = TFORM[col].IndexOf("I")) != -1)
                     {
                         // 2 bytes (entero)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 1, 2, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 1, 2, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("U")) != -1)
                     {
                         // 2 bytes (entero sin signo)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 2, 2, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 2, 2, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("J")) != -1)
                     {
                         // 4 bytes (entero)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 3, 4, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 3, 4, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("V")) != -1)
                     {
                         // 4 bytes (entero sin signo)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 4, 4, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 4, 4, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("K")) != -1)
                     {
                         // 8 bytes (entero)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 5, 8, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 5, 8, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("E")) != -1)
                     {
                         // 4 bytes (simple precisión)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 6, 4, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 6, 4, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("D")) != -1)
                     {
                         // 8 bytes (doble precisión)
 
                         r = Rep(TFORM[col], ind);
-                        sw.Write(SalidaElementoTabla(le, r, datos, 7, 8, ref i1, i2));
+                        cadena = SalidaElementoTabla(le, r, datos, 7, 8, ref i1, i2);
+                        if (quecols[col]) sw.Write(cadena);
                     }
                     else if ((ind = TFORM[col].IndexOf("C")) != -1)
                     {
                         // 8 bytes (simple precisión complejo)
 
                         r = Rep(TFORM[col], ind);
+                        if (quecols[col]) sw.Write(";");
                         i1 += 8;
-                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("M")) != -1)
                     {
                         // 16 bytes (doble precisión complejo)
 
                         r = Rep(TFORM[col], ind);
+                        if (quecols[col]) sw.Write(";");
                         i1 += 16;
-                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("P")) != -1)
                     {
                         // 8 bytes (descriptor de array)
 
                         r = Rep(TFORM[col], ind);
+                        if (quecols[col]) sw.Write(";");
                         i1 += 8;
-                        sw.Write(";");
                     }
                     else if ((ind = TFORM[col].IndexOf("A")) != -1)
                     {
@@ -2799,7 +2874,7 @@ namespace ExploraFITS
                             }
                         }
                         sb.Append(';');
-                        sw.Write(sb.ToString());
+                        if (quecols[col]) sw.Write(sb.ToString());
                     }
                     else
                     {
@@ -3616,7 +3691,6 @@ namespace ExploraFITS
             tabla.AllowUserToAddRows = false;
             tabla.AllowUserToDeleteRows = false;
             tabla.AllowUserToOrderColumns = false;
-            tabla.SelectionMode = DataGridViewSelectionMode.CellSelect;
             tabla.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
             tabla.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
             tabla.AllowUserToResizeRows = false;
@@ -3635,6 +3709,8 @@ namespace ExploraFITS
             tabla.ColumnCount = TFIELDS;
             for (int j = 0; j < TFIELDS; j++)
             {
+                tabla.Columns[j].SortMode = DataGridViewColumnSortMode.NotSortable;
+
                 if (TTYPE != null)
                 {
                     tabla.Columns[j].Name = TTYPE[j];
@@ -3644,9 +3720,11 @@ namespace ExploraFITS
                     tabla.Columns[j].Name = string.Format("Col{0}", j + 1);
                 }
             }
+            //tabla.SelectionMode = DataGridViewSelectionMode.CellSelect;
+            //tabla.SelectionMode = DataGridViewSelectionMode.FullColumnSelect;
+            tabla.SelectionMode = DataGridViewSelectionMode.ColumnHeaderSelect;
             tabla.RowCount = 0;
         }
-
         private void B_indexar_hiperleda_Click(object sender, EventArgs e)
         {
             if (File.Exists(Path.Combine(sendaApp, "indicesHL.bin")))
@@ -4254,7 +4332,6 @@ namespace ExploraFITS
             f_buscar.Datos(ar, de, 10);
             f_buscar.ShowDialog(this);
         }
-
         private void B_redibuja_Click(object sender, EventArgs e)
         {
             int i = hdu_actual = sel_HDU.SelectedIndex;
@@ -4628,16 +4705,170 @@ namespace ExploraFITS
 
             // Valores
 
-            for (int i = 0; i < es_actual.util_x - 1; i++)
+            if (panel_img.S_simplifica.Checked)
             {
-                px1 = (int)((es_actual.x[i] * inv_1mz - es_actual.minx) * pvx);
-                py1 = es_actual.util_y - (int)((es_actual.y[i] - es_actual.miny) * pvy);
-                px2 = (int)((es_actual.x[i + 1] * inv_1mz - es_actual.minx) * pvx);
-                py2 = es_actual.util_y - (int)((es_actual.y[i + 1] - es_actual.miny) * pvy);
-                g.DrawLine(lapiz, es_actual.mizq + px1, es_actual.msup + py1, es_actual.mizq + px2, es_actual.msup + py2);
+                // Ajuste por mínimos cuadrados
+
+                // Una banda de ancho fijo 'corte', centrada en el polinomio
+
+                double corte;
+                if (panel_img.v_hueco.Text.Trim().Length == 0)
+                {
+                    // Un 'MIN_DEFECTO' % del rango de variación : 'es_actual.maxy - es_actual.miny'
+
+                    panel_img.v_hueco.Text = string.Format("{0}", MIN_DEFECTO * 100);
+                    corte = MIN_DEFECTO * (es_actual.maxy - es_actual.miny);
+                }
+                else
+                {
+                    corte = Convert.ToDouble(panel_img.v_hueco.Text.Trim().Replace(s_millar, s_decimal)) / 100 * (es_actual.maxy - es_actual.miny);
+                    if (corte < 0)
+                    {
+                        corte = 0;
+                        panel_img.v_hueco.Text = "0";
+                    }
+                }
+                if (AjustaPolinomio(corte))
+                {
+                    double[] y = new double[es_actual.util_x];
+                    for (int k = 0; k < es_actual.util_x; k++)
+                    {
+                        if (Math.Abs(es_actual.y[k] - regLin.Ycalc[k]) < corte)
+                        {
+                            // Dentro del corte, el valor ajustado
+
+                            y[k] = regLin.Ycalc[k];
+                        }
+                        else
+                        {
+                            // Fuera del corte, el dato
+
+                            y[k] = es_actual.y[k];
+                        }
+                    }
+                    for (int i = 0; i < es_actual.util_x - 1; i++)
+                    {
+                        px1 = (int)((es_actual.x[i] * inv_1mz - es_actual.minx) * pvx);
+                        py1 = es_actual.util_y - (int)((y[i] - es_actual.miny) * pvy);
+                        px2 = (int)((es_actual.x[i + 1] * inv_1mz - es_actual.minx) * pvx);
+                        py2 = es_actual.util_y - (int)((y[i + 1] - es_actual.miny) * pvy);
+                        g.DrawLine(lapiz, es_actual.mizq + px1, es_actual.msup + py1, es_actual.mizq + px2, es_actual.msup + py2);
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < es_actual.util_x - 1; i++)
+                {
+                    px1 = (int)((es_actual.x[i] * inv_1mz - es_actual.minx) * pvx);
+                    py1 = es_actual.util_y - (int)((es_actual.y[i] - es_actual.miny) * pvy);
+                    px2 = (int)((es_actual.x[i + 1] * inv_1mz - es_actual.minx) * pvx);
+                    py2 = es_actual.util_y - (int)((es_actual.y[i + 1] - es_actual.miny) * pvy);
+                    g.DrawLine(lapiz, es_actual.mizq + px1, es_actual.msup + py1, es_actual.mizq + px2, es_actual.msup + py2);
+                }
             }
             panel_img.lienzo.Image = img;
             Disponible(true);
+        }
+        private bool AjustaPolinomio(double corte)
+        {
+            const int MAX_GRADO = 10;
+            int n = es_actual.x.Length;
+            double[] y = new double[n];
+            double[] w = new double[n];
+            for (int k = 0; k < n; k++)
+            {
+                w[k] = 1;
+                y[k] = es_actual.y[k];
+            }
+            double[,] x;
+            int grado = 4;
+            x = DatosX(grado);
+            if (!regLin.Regress(y, x, w, 0))
+            {
+                MessageBox.Show(Idioma.msg[Idioma.lengua, 139], Idioma.msg[Idioma.lengua, 140], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+            AnulaPicos(w, corte);
+            if (!regLin.Regress(y, x, w, 0))
+            {
+                MessageBox.Show(Idioma.msg[Idioma.lengua, 139], Idioma.msg[Idioma.lengua, 140], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            // Realiza nuevas regresiones, aumentando el grado, mientras R2 mejore
+            // A mayor grado debería producirse un mejor ajuste, pero hay un problema de precisión numérica
+            // un número 'double' tiene un máximo de 16 cifras significativas, los valores de la longitud de onda
+            // son del orden de 10^3 por lo que el termino x^10 del polinomio es del orden de 10^30 de forma que
+            // sumarle el termino x^1 (10^3) no cambia su valor.
+
+            double r2;
+            do
+            {
+                r2 = regLin.RYSQ;
+                grado++;
+                x = DatosX(grado);
+                if (!regLin.Regress(y, x, w, 0))
+                {
+                    MessageBox.Show(Idioma.msg[Idioma.lengua, 139], Idioma.msg[Idioma.lengua, 140], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+            } while (regLin.RYSQ > r2 && grado < MAX_GRADO);
+            if (regLin.RYSQ < r2)
+            {
+                // Retroceder un grado
+
+                grado--;
+                x = DatosX(grado);
+                if (!regLin.Regress(y, x, w, 0))
+                {
+                    MessageBox.Show(Idioma.msg[Idioma.lengua, 139], Idioma.msg[Idioma.lengua, 140], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+            }
+
+            // Realiza una última regresión anulando los picos conforme a la regresión anterior
+
+            AnulaPicos(w, corte);
+            if (!regLin.Regress(y, x, w, 0))
+            {
+                MessageBox.Show(Idioma.msg[Idioma.lengua, 139], Idioma.msg[Idioma.lengua, 140], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+            return true;
+        }
+        private double[,] DatosX(int grado)
+        {
+            int terminos = grado + 1;
+            int n = es_actual.x.Length;
+            double[,] x = new double[terminos, n];
+            double xi;
+            double xp;
+            for (int k = 0; k < n; k++)
+            {
+                x[0, k] = 1;
+                xi = xp = es_actual.x[k];
+                for (int j = 1; j < terminos; j++)
+                {
+                    x[j, k] = xp;
+                    xp *= xi;
+                }
+            }
+            return x;
+        }
+        private void AnulaPicos(double[] w, double corte)
+        {
+            for (int i = 0; i < es_actual.x.Length; i++)
+            {
+                if (Math.Abs(es_actual.y[i] - regLin.Ycalc[i]) < corte)
+                {
+                    w[i] = 1;
+                }
+                else
+                {
+                    w[i] = 0;
+                }
+            }
         }
         private void AjustaLienzo()
         {
@@ -4696,11 +4927,6 @@ namespace ExploraFITS
         }
         public bool BuscaPicos()
         {
-            const double MIN_DEFECTO = 0.25;
-            const double RANGO_X = 0.02;
-            const int MIN_RANGO_X = 3;
-            const int DIF_MIN_ENTORNO = 3;
-
             Disponible(false);
             if (es_actual == null) return false;
             int n_media_movil;
@@ -4721,7 +4947,7 @@ namespace ExploraFITS
             double min;
             if (panel_img.v_hueco.Text.Trim().Length == 0)
             {
-                // Un MIN_DEFECTO % del rango de variación
+                // Un 'MIN_DEFECTO' % del rango de variación : 'es_actual.maxy - es_actual.miny'
 
                 panel_img.v_hueco.Text = string.Format("{0}", MIN_DEFECTO * 100);
                 min = MIN_DEFECTO * (es_actual.maxy - es_actual.miny);
@@ -4872,6 +5098,81 @@ namespace ExploraFITS
             MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 113], panel_img.picos.Count), Idioma.msg[Idioma.lengua, 114], MessageBoxButtons.OK, MessageBoxIcon.Information);
             Disponible(true);
             Console.Beep();
+            return true;
+        }
+        public bool BuscaPicosSimplificado()
+        {
+            int n = es_actual.x.Length;
+
+            // Una banda de ancho fijo 'corte', centrada en el polinomio
+
+            double corte;
+            if (panel_img.v_hueco.Text.Trim().Length == 0)
+            {
+                // Un MIN_DEFECTO % del rango de variación
+
+                panel_img.v_hueco.Text = string.Format("{0}", MIN_DEFECTO * 100);
+                corte = MIN_DEFECTO * (es_actual.maxy - es_actual.miny);
+            }
+            else
+            {
+                corte = Convert.ToDouble(panel_img.v_hueco.Text.Trim().Replace(s_millar, s_decimal)) / 100 * (es_actual.maxy - es_actual.miny);
+                if (corte < 0)
+                {
+                    corte = 0;
+                    panel_img.v_hueco.Text = "0";
+                }
+            }
+            if (!AjustaPolinomio(corte)) return false;
+            if (panel_img.picos == null)
+            {
+                panel_img.picos = new List<Form2.Pico>();
+            }
+            else
+            {
+                panel_img.picos.Clear();
+            }
+            int candidato;
+            double valor;
+            bool tendencia;
+            int k1;
+            int k = 0;
+            while (k < n)
+            {
+                if (Math.Abs(es_actual.y[k] - regLin.Ycalc[k]) >= corte)
+                {
+                    k1 = k + 1;
+                    candidato = k;
+                    valor = es_actual.y[k];
+                    tendencia = es_actual.y[k] > regLin.Ycalc[k];
+                    
+                    // Mientras se diferencie del ajuste en mas de corte/2 se considera el mismo pico
+
+                    while (k1 < n && Math.Abs(es_actual.y[k1] - regLin.Ycalc[k1]) > corte/2)
+                    {
+                        if (tendencia)
+                        {
+                            if (es_actual.y[k1] > valor)
+                            {
+                                candidato = k1;
+                                valor = es_actual.y[k1];
+                            }
+                        }
+                        else
+                        {
+                            if (es_actual.y[k1] < valor)
+                            {
+                                candidato = k1;
+                                valor = es_actual.y[k1];
+                            }
+                        }
+                        k1++;
+                    }
+                    k = k1;
+                    panel_img.picos.Add(new Form2.Pico(candidato, valor));
+                }
+                k++;
+            }
             return true;
         }
         public void DibujaHistograma()
@@ -6638,7 +6939,8 @@ namespace ExploraFITS
             int col;
             int ind;
             int contador = 0;
-            ExportaCabeceraBin(sw);
+            bool[] quecols = ExportaCabeceraBin(sw);
+            if (quecols == null) return false;
             for (int i2 = 0; i2 < NAXISn[1]; i2++)
             {
                 contador++;
@@ -6657,8 +6959,8 @@ namespace ExploraFITS
                         r = Rep(TFORM[col], ind);
                         for (int k = 0; k < r; k++)
                         {
+                            if (quecols[col]) sw.Write(";");
                             fs.Seek(1, SeekOrigin.Current);
-                            sw.Write(";");
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("X")) != -1)
@@ -6668,8 +6970,8 @@ namespace ExploraFITS
                         r = Rep(TFORM[col], ind);
                         for (int k = 0; k < r; k++)
                         {
+                            if (quecols[col]) sw.Write(";");
                             fs.Seek(1, SeekOrigin.Current);
-                            sw.Write(";");
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("B")) != -1)
@@ -6677,9 +6979,16 @@ namespace ExploraFITS
                         // 1 byte (byte)
 
                         r = Rep(TFORM[col], ind);
-                        for (int k = 0; k < r; k++)
+                        if (quecols[col])
                         {
-                            sw.Write(string.Format("{0};", (byte)fs.ReadByte()));
+                            for (int k = 0; k < r; k++)
+                            {
+                                sw.Write(string.Format("{0};", (byte)fs.ReadByte()));
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(r, SeekOrigin.Current);
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("S")) != -1)
@@ -6687,86 +6996,142 @@ namespace ExploraFITS
                         // 1 byte con signo (byte)
 
                         r = Rep(TFORM[col], ind);
-                        for (int k = 0; k < r; k++)
+                        if (quecols[col])
                         {
-                            sw.Write(string.Format("{0};", (sbyte)fs.ReadByte()));
+                            for (int k = 0; k < r; k++)
+                            {
+                                sw.Write(string.Format("{0};", (sbyte)fs.ReadByte()));
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(r, SeekOrigin.Current);
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("I")) != -1)
                     {
                         // 2 bytes (entero)
 
-                        if (!ElementosCeldaFichero(fs, sw, le, 1, 2, ind, col))
+                        if (quecols[col])
                         {
-                            sw.Close();
-                            fs.Close();
-                            return false;
+                            if (!ElementosCeldaFichero(fs, sw, le, 1, 2, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(2, SeekOrigin.Current);
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("U")) != -1)
                     {
                         // 2 bytes (entero sin signo)
 
-                        if (!ElementosCeldaFichero(fs, sw, le, 2, 2, ind, col))
+                        if (quecols[col])
                         {
-                            sw.Close();
-                            fs.Close();
-                            return false;
+                            if (!ElementosCeldaFichero(fs, sw, le, 2, 2, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(2, SeekOrigin.Current);
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("J")) != -1)
                     {
                         // 4 bytes (entero)
 
-                        if (!ElementosCeldaFichero(fs, sw, le, 3, 4, ind, col))
+                        if (quecols[col])
                         {
-                            sw.Close();
-                            fs.Close();
-                            return false;
+                            if (!ElementosCeldaFichero(fs, sw, le, 3, 4, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(4, SeekOrigin.Current);
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("V")) != -1)
                     {
                         // 4 bytes (entero sin signo)
 
-                        if (!ElementosCeldaFichero(fs, sw, le, 4, 4, ind, col))
+                        if (quecols[col])
                         {
-                            sw.Close();
-                            fs.Close();
-                            return false;
+                            if (!ElementosCeldaFichero(fs, sw, le, 4, 4, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(4, SeekOrigin.Current);
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("K")) != -1)
                     {
                         // 8 bytes (entero)
 
-                        if (!ElementosCeldaFichero(fs, sw, le, 5, 8, ind, col))
+                        if (quecols[col])
                         {
-                            sw.Close();
-                            fs.Close();
-                            return false;
+                            if (!ElementosCeldaFichero(fs, sw, le, 5, 8, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(8, SeekOrigin.Current);
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("E")) != -1)
                     {
                         // 4 bytes (simple precisión)
 
-                        if (!ElementosCeldaFichero(fs, sw, le, 6, 4, ind, col))
+                        if (quecols[col])
                         {
-                            sw.Close();
-                            fs.Close();
-                            return false;
+                            if (!ElementosCeldaFichero(fs, sw, le, 6, 4, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(4, SeekOrigin.Current);
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("D")) != -1)
                     {
                         // 8 bytes (doble precisión)
 
-                        if (!ElementosCeldaFichero(fs, sw, le, 7, 8, ind, col))
+                        if (quecols[col])
                         {
-                            sw.Close();
-                            fs.Close();
-                            return false;
+                            if (!ElementosCeldaFichero(fs, sw, le, 7, 8, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(8, SeekOrigin.Current);
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("C")) != -1)
@@ -6774,10 +7139,17 @@ namespace ExploraFITS
                         // 8 bytes (simple precisión complejo)
 
                         r = Rep(TFORM[col], ind);
-                        for (int k = 0; k < r; k++)
+                        if (quecols[col])
                         {
-                            fs.Seek(8, SeekOrigin.Current);
-                            sw.Write(";");
+                            for (int k = 0; k < r; k++)
+                            {
+                                fs.Seek(8, SeekOrigin.Current);
+                                sw.Write(";");
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(8 * r, SeekOrigin.Current);
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("M")) != -1)
@@ -6785,10 +7157,17 @@ namespace ExploraFITS
                         // 16 bytes (doble precisión complejo)
 
                         r = Rep(TFORM[col], ind);
-                        for (int k = 0; k < r; k++)
+                        if (quecols[col])
                         {
-                            fs.Seek(16, SeekOrigin.Current);
-                            sw.Write(";");
+                            for (int k = 0; k < r; k++)
+                            {
+                                fs.Seek(16, SeekOrigin.Current);
+                                sw.Write(";");
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(16 * r, SeekOrigin.Current);
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("P")) != -1)
@@ -6796,10 +7175,17 @@ namespace ExploraFITS
                         // 8 bytes (descriptor de array)
 
                         r = Rep(TFORM[col], ind);
-                        for (int k = 0; k < r; k++)
+                        if (quecols[col])
                         {
-                            fs.Seek(8, SeekOrigin.Current);
-                            sw.Write(";");
+                            for (int k = 0; k < r; k++)
+                            {
+                                fs.Seek(8, SeekOrigin.Current);
+                                sw.Write(";");
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(8 * r, SeekOrigin.Current);
                         }
                     }
                     else if ((ind = TFORM[col].IndexOf("A")) != -1)
@@ -6809,16 +7195,23 @@ namespace ExploraFITS
                         int b;
                         r = Rep(TFORM[col], ind);
                         int w = ind == (TFORM[col].Length - 1) ? 1 : Convert.ToInt32(TFORM[col][(ind + 1)..]);
-                        StringBuilder sb = new StringBuilder(r * w);
-                        for (int k1 = 0; k1 < r; k1++)
+                        if (quecols[col])
                         {
-                            for (int k2 = 0; k2 < w; k2++)
+                            StringBuilder sb = new StringBuilder(r * w);
+                            for (int k1 = 0; k1 < r; k1++)
                             {
-                                b = fs.ReadByte();
-                                if (b != 0) sb.AppendFormat("{0}", Convert.ToChar((byte)b));
+                                for (int k2 = 0; k2 < w; k2++)
+                                {
+                                    b = fs.ReadByte();
+                                    if (b != 0) sb.AppendFormat("{0}", Convert.ToChar((byte)b));
+                                }
                             }
+                            sw.Write(string.Format("{0};", sb.ToString()));
                         }
-                        sw.Write(string.Format("{0};", sb.ToString()));
+                        else
+                        {
+                            fs.Seek(w * r, SeekOrigin.Current);
+                        }
                     }
                     else
                     {

@@ -15,6 +15,7 @@
     <Version>1.0.1.11</Version>
     <Copyright>Labotecta</Copyright>
     <Platforms>AnyCPU;ARM64</Platforms>
+    <StartupObject>ExploraFITS.Program</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
