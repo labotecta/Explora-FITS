@@ -86,6 +86,10 @@ namespace ExploraFITS
             this.r_movil = new System.Windows.Forms.Label();
             this.v_movil = new System.Windows.Forms.TextBox();
             this.S_simplifica = new System.Windows.Forms.CheckBox();
+            this.v_e = new System.Windows.Forms.TextBox();
+            this.r_i = new System.Windows.Forms.Label();
+            this.v_i = new System.Windows.Forms.TextBox();
+            this.b_e = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.lienzo)).BeginInit();
             this.SuspendLayout();
             // 
@@ -254,7 +258,7 @@ namespace ExploraFITS
             // 
             // lienzo
             // 
-            this.lienzo.Location = new System.Drawing.Point(117, 40);
+            this.lienzo.Location = new System.Drawing.Point(161, 40);
             this.lienzo.Name = "lienzo";
             this.lienzo.Size = new System.Drawing.Size(1230, 1230);
             this.lienzo.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
@@ -535,7 +539,7 @@ namespace ExploraFITS
             // lista_elegidas
             // 
             this.lista_elegidas.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.lista_elegidas.Location = new System.Drawing.Point(1030, 293);
+            this.lista_elegidas.Location = new System.Drawing.Point(1074, 293);
             this.lista_elegidas.Name = "lista_elegidas";
             this.lista_elegidas.Size = new System.Drawing.Size(139, 28);
             this.lista_elegidas.TabIndex = 74;
@@ -545,7 +549,7 @@ namespace ExploraFITS
             // lista_elegibles
             // 
             this.lista_elegibles.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.lista_elegibles.Location = new System.Drawing.Point(887, 293);
+            this.lista_elegibles.Location = new System.Drawing.Point(931, 293);
             this.lista_elegibles.Name = "lista_elegibles";
             this.lista_elegibles.Size = new System.Drawing.Size(139, 28);
             this.lista_elegibles.TabIndex = 75;
@@ -553,7 +557,7 @@ namespace ExploraFITS
             // 
             // v_z
             // 
-            this.v_z.Location = new System.Drawing.Point(1200, 293);
+            this.v_z.Location = new System.Drawing.Point(1244, 293);
             this.v_z.Name = "v_z";
             this.v_z.Size = new System.Drawing.Size(57, 27);
             this.v_z.TabIndex = 76;
@@ -562,7 +566,7 @@ namespace ExploraFITS
             // b_picos
             // 
             this.b_picos.Image = ((System.Drawing.Image)(resources.GetObject("b_picos.Image")));
-            this.b_picos.Location = new System.Drawing.Point(1614, 284);
+            this.b_picos.Location = new System.Drawing.Point(1658, 284);
             this.b_picos.Name = "b_picos";
             this.b_picos.Size = new System.Drawing.Size(42, 42);
             this.b_picos.TabIndex = 77;
@@ -571,7 +575,7 @@ namespace ExploraFITS
             // 
             // v_hueco
             // 
-            this.v_hueco.Location = new System.Drawing.Point(1444, 292);
+            this.v_hueco.Location = new System.Drawing.Point(1488, 292);
             this.v_hueco.Name = "v_hueco";
             this.v_hueco.Size = new System.Drawing.Size(49, 27);
             this.v_hueco.TabIndex = 78;
@@ -581,7 +585,7 @@ namespace ExploraFITS
             // b_limpiar
             // 
             this.b_limpiar.Image = ((System.Drawing.Image)(resources.GetObject("b_limpiar.Image")));
-            this.b_limpiar.Location = new System.Drawing.Point(1850, 284);
+            this.b_limpiar.Location = new System.Drawing.Point(1889, 284);
             this.b_limpiar.Name = "b_limpiar";
             this.b_limpiar.Size = new System.Drawing.Size(42, 42);
             this.b_limpiar.TabIndex = 79;
@@ -591,7 +595,7 @@ namespace ExploraFITS
             // lista_picos
             // 
             this.lista_picos.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.lista_picos.Location = new System.Drawing.Point(1661, 292);
+            this.lista_picos.Location = new System.Drawing.Point(1705, 292);
             this.lista_picos.Name = "lista_picos";
             this.lista_picos.Size = new System.Drawing.Size(183, 28);
             this.lista_picos.Sorted = true;
@@ -601,7 +605,7 @@ namespace ExploraFITS
             // 
             // v_significativa
             // 
-            this.v_significativa.Location = new System.Drawing.Point(1560, 292);
+            this.v_significativa.Location = new System.Drawing.Point(1604, 292);
             this.v_significativa.Name = "v_significativa";
             this.v_significativa.Size = new System.Drawing.Size(49, 27);
             this.v_significativa.TabIndex = 81;
@@ -611,7 +615,7 @@ namespace ExploraFITS
             // r_z
             // 
             this.r_z.AutoSize = true;
-            this.r_z.Location = new System.Drawing.Point(1175, 297);
+            this.r_z.Location = new System.Drawing.Point(1219, 297);
             this.r_z.Name = "r_z";
             this.r_z.Size = new System.Drawing.Size(16, 20);
             this.r_z.TabIndex = 82;
@@ -621,7 +625,7 @@ namespace ExploraFITS
             // r_hueco
             // 
             this.r_hueco.AutoSize = true;
-            this.r_hueco.Location = new System.Drawing.Point(1372, 297);
+            this.r_hueco.Location = new System.Drawing.Point(1416, 297);
             this.r_hueco.Name = "r_hueco";
             this.r_hueco.Size = new System.Drawing.Size(66, 20);
             this.r_hueco.TabIndex = 83;
@@ -631,7 +635,7 @@ namespace ExploraFITS
             // r_significativa
             // 
             this.r_significativa.AutoSize = true;
-            this.r_significativa.Location = new System.Drawing.Point(1501, 297);
+            this.r_significativa.Location = new System.Drawing.Point(1545, 297);
             this.r_significativa.Name = "r_significativa";
             this.r_significativa.Size = new System.Drawing.Size(53, 20);
             this.r_significativa.TabIndex = 84;
@@ -641,7 +645,7 @@ namespace ExploraFITS
             // r_movil
             // 
             this.r_movil.AutoSize = true;
-            this.r_movil.Location = new System.Drawing.Point(1262, 297);
+            this.r_movil.Location = new System.Drawing.Point(1306, 297);
             this.r_movil.Name = "r_movil";
             this.r_movil.Size = new System.Drawing.Size(46, 20);
             this.r_movil.TabIndex = 86;
@@ -649,7 +653,7 @@ namespace ExploraFITS
             // 
             // v_movil
             // 
-            this.v_movil.Location = new System.Drawing.Point(1316, 293);
+            this.v_movil.Location = new System.Drawing.Point(1360, 293);
             this.v_movil.Name = "v_movil";
             this.v_movil.Size = new System.Drawing.Size(49, 27);
             this.v_movil.TabIndex = 85;
@@ -665,12 +669,54 @@ namespace ExploraFITS
             this.S_simplifica.TabIndex = 88;
             this.S_simplifica.Text = "Simplifica";
             this.S_simplifica.UseVisualStyleBackColor = true;
+            this.S_simplifica.CheckedChanged += new System.EventHandler(this.S_simplifica_CheckedChanged);
+            // 
+            // v_e
+            // 
+            this.v_e.Location = new System.Drawing.Point(865, 293);
+            this.v_e.Name = "v_e";
+            this.v_e.Size = new System.Drawing.Size(34, 27);
+            this.v_e.TabIndex = 89;
+            this.v_e.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            // 
+            // r_i
+            // 
+            this.r_i.AutoSize = true;
+            this.r_i.Location = new System.Drawing.Point(797, 296);
+            this.r_i.Name = "r_i";
+            this.r_i.Size = new System.Drawing.Size(13, 20);
+            this.r_i.TabIndex = 92;
+            this.r_i.Text = "I";
+            this.r_i.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // v_i
+            // 
+            this.v_i.Location = new System.Drawing.Point(817, 292);
+            this.v_i.Name = "v_i";
+            this.v_i.Size = new System.Drawing.Size(43, 27);
+            this.v_i.TabIndex = 91;
+            this.v_i.Text = "5";
+            this.v_i.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            // 
+            // b_e
+            // 
+            this.b_e.Location = new System.Drawing.Point(902, 284);
+            this.b_e.Name = "b_e";
+            this.b_e.Size = new System.Drawing.Size(25, 42);
+            this.b_e.TabIndex = 93;
+            this.b_e.Text = "E";
+            this.b_e.UseVisualStyleBackColor = true;
+            this.b_e.Click += new System.EventHandler(this.B_e_Click);
             // 
             // Form2
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1950, 1306);
+            this.Controls.Add(this.b_e);
+            this.Controls.Add(this.r_i);
+            this.Controls.Add(this.v_i);
+            this.Controls.Add(this.v_e);
             this.Controls.Add(this.S_simplifica);
             this.Controls.Add(this.r_movil);
             this.Controls.Add(this.v_movil);
@@ -800,5 +846,9 @@ namespace ExploraFITS
         private System.Windows.Forms.Label r_movil;
         public System.Windows.Forms.TextBox v_movil;
         public System.Windows.Forms.CheckBox S_simplifica;
+        public System.Windows.Forms.TextBox v_e;
+        private System.Windows.Forms.Label r_i;
+        public System.Windows.Forms.TextBox v_i;
+        public System.Windows.Forms.Button b_e;
     }
 }

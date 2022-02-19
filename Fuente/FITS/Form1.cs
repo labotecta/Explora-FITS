@@ -192,6 +192,7 @@ namespace ExploraFITS
         public int[,] datosi;
         public float[,] datosf;
         public double[,] datosd;
+        public long[,] datosl;
 
         private object[,,] datos3;
         public byte[,,] datosb3;
@@ -199,6 +200,7 @@ namespace ExploraFITS
         public int[,,] datosi3;
         public float[,,] datosf3;
         public double[,,] datosd3;
+        public long[,,] datosl3;
 
         private int ind_color_nan;
         public Color color_nan;
@@ -361,6 +363,22 @@ namespace ExploraFITS
             }
         }
         public Espectro es_actual;
+        public class EspectrosAtomicos
+        {
+            public int intensidad;
+            public double longitud_onda;
+            public string elemento;
+            public string isotopo;
+            public EspectrosAtomicos(int intensidad, double longitud_onda, string elemento, string isotopo)
+            {
+                this.intensidad = intensidad;
+                this.longitud_onda = longitud_onda;
+                this.elemento = elemento;
+                this.isotopo = isotopo;
+            }
+        }
+        public readonly List<EspectrosAtomicos> lineas_atomicas = new List<EspectrosAtomicos>();
+        public readonly List<string> lista_elegibles_principal = new List<string>();
 
         public FITS()
         {
@@ -413,9 +431,10 @@ namespace ExploraFITS
             Actualiza_b_color_inf();
             ind_color_cota_sup = 0;
             Actualiza_b_color_sup();
+            LeeEspectrosAtomicos();
             panel_img = new Form2
             {
-                fits = this
+                principal = this
             };
             panel_img.Show();
             IniciaParametros();
@@ -525,6 +544,31 @@ namespace ExploraFITS
             panel_img.Cursor = que ? Cursors.Default : Cursors.WaitCursor;
             Application.DoEvents();
         }
+        public void LeeEspectrosAtomicos()
+        {
+            FileStream fe = new FileStream(Path.Combine(sendaApp, "lineas_atomicas.txt"), FileMode.Open, FileAccess.Read, FileShare.Read);
+            StreamReader r = new StreamReader(fe);
+            lineas_atomicas.Clear();
+            lista_elegibles_principal.Clear();
+            string linea;
+            string[] sd;
+            int intensidad;
+            double longitud_onda;
+            string elemento;
+            string isotopo;
+            while (!r.EndOfStream)
+            {
+                linea = r.ReadLine();
+                sd = linea.Split('\t');
+                intensidad = sd[2].Trim().Length == 0 ? 0 : Convert.ToInt32(sd[2]);
+                longitud_onda = Convert.ToDouble(sd[3].Trim().Replace('.', ','));
+                elemento = sd[4].Trim();
+                isotopo = sd[4].Trim() + " " + sd[1].Trim();
+                lista_elegibles_principal.Add(string.Format("{0,10:f3} {1} {2}", longitud_onda, isotopo, intensidad));
+                lineas_atomicas.Add(new EspectrosAtomicos(intensidad, longitud_onda, elemento, isotopo));
+            }
+            r.Close();
+        }
         private void B_idioma_Click(object sender, EventArgs e)
         {
             Idioma.lengua = 1 - Idioma.lengua;
@@ -591,6 +635,9 @@ namespace ExploraFITS
                                 case 4:
                                     sw.Write(datosf[i1, i2]);
                                     break;
+                                case 6:
+                                    sw.Write(datosl[i1, i2]);
+                                    break;
                                 case 5:
                                     sw.Write(datosd[i1, i2]);
                                     break;
@@ -618,6 +665,9 @@ namespace ExploraFITS
                                     break;
                                 case 4:
                                     sw.Write(datosf3[i1, i2, i3]);
+                                    break;
+                                case 6:
+                                    sw.Write(datosl3[i1, i2, i3]);
                                     break;
                                 case 5:
                                     sw.Write(datosd3[i1, i2, i3]);
@@ -870,7 +920,7 @@ namespace ExploraFITS
             {
                 panel_img = new Form2
                 {
-                    fits = this
+                    principal = this
                 };
                 panel_img.Show();
             }
@@ -927,6 +977,10 @@ namespace ExploraFITS
                                 fs.Read(bytes_valor, 0, 4);
                                 datosf[i1, i2] = BitConverter.ToSingle(bytes_valor);
                                 break;
+                            case 6:
+                                fs.Read(bytes_valor, 0, 8);
+                                datosl[i1, i2] = BitConverter.ToInt64(bytes_valor);
+                                break;
                             default:
                                 fs.Read(bytes_valor, 0, 8);
                                 datosf[i1, i2] = (float)BitConverter.ToDouble(bytes_valor);
@@ -977,10 +1031,20 @@ namespace ExploraFITS
                 if (num_octetos > 2147483591)
                 {
                     fs.Close();
-                    DialogResult respuesta = MessageBox.Show(Idioma.msg[Idioma.lengua, 131], Idioma.msg[Idioma.lengua, 4], MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                    if (respuesta == DialogResult.Yes)
+                    Form7 frac = new Form7();
+                    frac.Text = Idioma.msg[Idioma.lengua, 4];
+                    frac.label1.Text = Idioma.msg[Idioma.lengua, 131];
+                    frac.fracciones.Text = "1000";
+                    DialogResult respuesta = frac.ShowDialog(this);
+                    if (respuesta == DialogResult.OK)
                     {
-                        ExtraeFITS(fichero);
+                        int ff = Convert.ToInt32(frac.nf);
+                        frac.Dispose();
+                        ExtraeFITS(fichero, ff);
+                    }
+                    else
+                    {
+                        frac.Dispose();
                     }
                     return false;
                 }
@@ -1114,7 +1178,7 @@ namespace ExploraFITS
                 {
                     panel_img = new Form2
                     {
-                        fits = this
+                        principal = this
                     };
                 }
                 GC.Collect();
@@ -1268,6 +1332,10 @@ namespace ExploraFITS
                 else if (tipoDato == 1 && byPorDato == 8)
                 {
                     nueva.clase_dato = 5;
+                }
+                else if (tipoDato == 0 && byPorDato == 8)
+                {
+                    nueva.clase_dato = 6;
                 }
                 else
                 {
@@ -1552,6 +1620,50 @@ namespace ExploraFITS
                                     }
                                 }
                                 break;
+                            case 6:
+                                datosl = new long[NAXISn[0], NAXISn[1]];
+                                for (i2 = 0; i2 < NAXISn[1]; i2++)
+                                {
+                                    for (i1 = 0; i1 < NAXISn[0]; i1++)
+                                    {
+                                        contador++;
+                                        if (contador % X10M == 0)
+                                        {
+                                            v_leidos.Text = string.Format("{0:N0}", contador * byPorDato);
+                                            Application.DoEvents();
+                                        }
+
+                                        // Los datos están en formato big-endian: el byte más significativo está el primero
+
+                                        if (le)
+                                        {
+                                            // El sistema operativo trabaja en little-endian
+                                            // Pasar los datos a little-endian
+
+                                            bytesDato[7] = octetos[puntero++];
+                                            bytesDato[6] = octetos[puntero++];
+                                            bytesDato[5] = octetos[puntero++];
+                                            bytesDato[4] = octetos[puntero++];
+                                            bytesDato[3] = octetos[puntero++];
+                                            bytesDato[2] = octetos[puntero++];
+                                            bytesDato[1] = octetos[puntero++];
+                                            bytesDato[0] = octetos[puntero++];
+                                        }
+                                        else
+                                        {
+                                            bytesDato[0] = octetos[puntero++];
+                                            bytesDato[1] = octetos[puntero++];
+                                            bytesDato[2] = octetos[puntero++];
+                                            bytesDato[3] = octetos[puntero++];
+                                            bytesDato[4] = octetos[puntero++];
+                                            bytesDato[5] = octetos[puntero++];
+                                            bytesDato[6] = octetos[puntero++];
+                                            bytesDato[7] = octetos[puntero++];
+                                        }
+                                        datosl[i1, i2] = BitConverter.ToInt64(bytesDato);
+                                    }
+                                }
+                                break;
                             default:
                                 datosd = new double[NAXISn[0], NAXISn[1]];
                                 for (i2 = 0; i2 < NAXISn[1]; i2++)
@@ -1612,6 +1724,9 @@ namespace ExploraFITS
                                 break;
                             case 4:
                                 panel_img.Dibuja(datosf, true);
+                                break;
+                            case 6:
+                                panel_img.Dibuja(datosl, true);
                                 break;
                             default:
                                 panel_img.Dibuja(datosd, true);
@@ -1735,6 +1850,9 @@ namespace ExploraFITS
                             case 4:
                                 datosf3 = new float[NAXISn[0], NAXISn[1], NAXISn[2]];
                                 break;
+                            case 6:
+                                datosl3 = new long[NAXISn[0], NAXISn[1], NAXISn[2]];
+                                break;
                             default:
                                 datosd3 = new double[NAXISn[0], NAXISn[1], NAXISn[2]];
                                 break;
@@ -1785,6 +1903,9 @@ namespace ExploraFITS
                                         case 4:
                                             datosf3[i1, i2, i3] = BitConverter.ToSingle(bytesDato);
                                             break;
+                                        case 6:
+                                            datosl3[i1, i2, i3] = BitConverter.ToInt64(bytesDato);
+                                            break;
                                         default:
                                             datosd3[i1, i2, i3] = BitConverter.ToDouble(bytesDato);
                                             break;
@@ -1807,6 +1928,9 @@ namespace ExploraFITS
                                 break;
                             case 4:
                                 panel_img.Dibuja(datosf3, true, 0);
+                                break;
+                            case 6:
+                                panel_img.Dibuja(datosl3, true, 0);
                                 break;
                             default:
                                 panel_img.Dibuja(datosd3, true, 0);
@@ -2115,7 +2239,7 @@ namespace ExploraFITS
             {
                 NAXIS = Convert.ToInt32(valor);
                 int ejes_min;
-                if (NAXIS == 1)
+                if (NAXIS == 0 || NAXIS == 1)
                 {
                     // Tara tratarlo como [n, 1]
 
@@ -3684,6 +3808,7 @@ namespace ExploraFITS
         }
         private void IniciaTablaBinaria()
         {
+            tabla.SelectionMode = DataGridViewSelectionMode.CellSelect;
             tabla.BackgroundColor = Color.LightGray;
             tabla.BorderStyle = BorderStyle.Fixed3D;
             tabla.ReadOnly = true;
@@ -3720,8 +3845,6 @@ namespace ExploraFITS
                     tabla.Columns[j].Name = string.Format("Col{0}", j + 1);
                 }
             }
-            //tabla.SelectionMode = DataGridViewSelectionMode.CellSelect;
-            //tabla.SelectionMode = DataGridViewSelectionMode.FullColumnSelect;
             tabla.SelectionMode = DataGridViewSelectionMode.ColumnHeaderSelect;
             tabla.RowCount = 0;
         }
@@ -4447,6 +4570,9 @@ namespace ExploraFITS
                     case 4:
                         elementos2[i] = datosf[i1, 0];
                         break;
+                    case 6:
+                        elementos2[i] = datosl[i1, 0];
+                        break;
                     case 5:
                         elementos2[i] = datosd[i1, 0];
                         break;
@@ -4515,9 +4641,6 @@ namespace ExploraFITS
                 Disponible(true);
                 return;
             }
-            Graphics g = Graphics.FromImage(img);
-            g.FillRectangle(Brushes.Black, 0, 0, es_actual.dim_x, es_actual.dim_y);
-
             es_actual.minx = double.MaxValue;
             es_actual.maxx = double.MinValue;
             es_actual.miny = double.MaxValue;
@@ -4563,12 +4686,43 @@ namespace ExploraFITS
             es_actual.escala_y = (double)es_actual.dim_y / panel_img.lienzo.Height;
             int ancho_lapiz = (int)(2 * es_actual.escala_x);
             if (ancho_lapiz < 2) ancho_lapiz = 2;
-            Pen lapiz = new Pen(Color.White, ancho_lapiz);
-            Pen lapiz_verde = new Pen(Color.Green, ancho_lapiz);
-            ancho_lapiz /= 2;
-            if (ancho_lapiz < 1) ancho_lapiz = 1;
-            Pen lapiz_fino_rojo = new Pen(Color.Red, ancho_lapiz);
-            Pen lapiz_fino_azul = new Pen(Color.LightBlue, ancho_lapiz);
+            int ancho_lapiz_fino = ancho_lapiz / 2;
+            if (ancho_lapiz_fino < 1) ancho_lapiz_fino = 1;
+            Brush brocha_fondo;
+            Brush brocha_texto;
+            Brush brocha_picos_a;
+            Brush brocha_picos_e;
+            Brush brocha_atomos;
+            Pen lapiz;
+            Pen lapiz_verde;
+            Pen lapiz_fino_rojo;
+            Pen lapiz_fino_azul;
+            if (panel_img.fondo_blanco)
+            {
+                brocha_fondo = Brushes.White;
+                brocha_texto = Brushes.Black;
+                brocha_picos_a = Brushes.Blue;
+                brocha_picos_e = Brushes.Red;
+                brocha_atomos = Brushes.Green;
+                lapiz = new Pen(Color.Black, ancho_lapiz);
+                lapiz_verde = new Pen(Color.Green, ancho_lapiz);
+                lapiz_fino_rojo = new Pen(Color.Red, ancho_lapiz_fino);
+                lapiz_fino_azul = new Pen(Color.Blue, ancho_lapiz_fino);
+            }
+            else
+            {
+                brocha_fondo = Brushes.Black;
+                brocha_texto = Brushes.White;
+                brocha_picos_a = Brushes.LightBlue;
+                brocha_picos_e = Brushes.Red;
+                brocha_atomos = Brushes.LightGreen;
+                lapiz = new Pen(Color.White, ancho_lapiz);
+                lapiz_verde = new Pen(Color.LightGreen, ancho_lapiz);
+                lapiz_fino_rojo = new Pen(Color.Red, ancho_lapiz_fino);
+                lapiz_fino_azul = new Pen(Color.LightBlue, ancho_lapiz_fino);
+            }
+            Graphics g = Graphics.FromImage(img);
+            g.FillRectangle(brocha_fondo, 0, 0, es_actual.dim_x, es_actual.dim_y);
 
             // Se dibuja en img antes de su adaptación al lienzo
 
@@ -4586,7 +4740,7 @@ namespace ExploraFITS
             {
                 px1 = (int)((xm - es_actual.minx) * pvx);
                 g.DrawLine(lapiz, es_actual.mizq + px1, es_actual.msup + es_actual.util_y, es_actual.mizq + px1, py1);
-                g.DrawString(string.Format("{0:N0}", xm), fuente, Brushes.White, es_actual.mizq + px1, py1);
+                g.DrawString(string.Format("{0:N0}", xm), fuente, brocha_texto, es_actual.mizq + px1, py1);
                 xm += ANCHO_MARCA;
             }
 
@@ -4597,12 +4751,12 @@ namespace ExploraFITS
             g.DrawLine(lapiz_fino_rojo, es_actual.mizq, es_actual.msup, es_actual.mizq + es_actual.util_x, es_actual.msup);
             py1 = (int)(es_actual.msup - (fuente.Height + 4 * es_actual.escala_y));
             if (py1 < 0) py1 = 0;
-            g.DrawString(string.Format("{0:e3}", es_actual.maxy), fuente, Brushes.White, 0, py1);
+            g.DrawString(string.Format("{0:e3}", es_actual.maxy), fuente, brocha_texto, 0, py1);
 
             // Menor
 
             g.DrawLine(lapiz_fino_rojo, es_actual.mizq, es_actual.msup + es_actual.util_y, es_actual.mizq + es_actual.util_x, es_actual.msup + es_actual.util_y);
-            g.DrawString(string.Format("{0:e3}", es_actual.miny), fuente, Brushes.White, 0, (float)(es_actual.msup + es_actual.util_y + 4 * es_actual.escala_y));
+            g.DrawString(string.Format("{0:e3}", es_actual.miny), fuente, brocha_texto, 0, (float)(es_actual.msup + es_actual.util_y + 4 * es_actual.escala_y));
 
             // Líneas atómicas
 
@@ -4663,7 +4817,7 @@ namespace ExploraFITS
                     cy = 0;
                     py2 = (int)(4 * es_actual.escala_y);
                 }
-                g.DrawString(nombre, fuente, Brushes.LightGreen, es_actual.mizq + px1, py2);
+                g.DrawString(nombre, fuente, brocha_atomos, es_actual.mizq + px1, py2);
                 ux = es_actual.mizq + px1 + g.MeasureString(nombre, fuente).Width;
             }
 
@@ -4693,11 +4847,11 @@ namespace ExploraFITS
                     }
                     if (panel_img.picos[i].valor < 0)
                     {
-                        g.DrawString(nombre, fuente, Brushes.Red, es_actual.mizq + px1 + 2, (float)(es_actual.msup + py2 - fuente.Height - 4 * es_actual.escala_y)); ;
+                        g.DrawString(nombre, fuente, brocha_picos_e, es_actual.mizq + px1 + 2, (float)(es_actual.msup + py2 - fuente.Height - 4 * es_actual.escala_y)); ;
                     }
                     else
                     {
-                        g.DrawString(nombre, fuente, Brushes.LightBlue, es_actual.mizq + px1 + 2, (float)(es_actual.msup + py2 - fuente.Height - 4 * es_actual.escala_y)); ;
+                        g.DrawString(nombre, fuente, brocha_picos_a, es_actual.mizq + px1 + 2, (float)(es_actual.msup + py2 - fuente.Height - 4 * es_actual.escala_y)); ;
                     }
                     ux = es_actual.mizq + px1 + 2 + g.MeasureString(nombre, fuente).Width;
                 }
@@ -4709,7 +4863,7 @@ namespace ExploraFITS
             {
                 // Ajuste por mínimos cuadrados
 
-                // Una banda de ancho fijo 'corte', centrada en el polinomio
+                // Una banda de ancho fijo 'corte', centrado en el polinomio
 
                 double corte;
                 if (panel_img.v_hueco.Text.Trim().Length == 0)
@@ -4770,27 +4924,163 @@ namespace ExploraFITS
             panel_img.lienzo.Image = img;
             Disponible(true);
         }
+        private void DatosXY(double[] yfuente, ref double[] ydestino, double[] xfuente, ref double[,] xdestino, int grado, int desde, int hasta)
+        {
+            ydestino = new double[hasta - desde];
+            int k = 0;
+            for (int i = desde; i < hasta; i++)
+            {
+                ydestino[k] = yfuente[i];
+                k++;
+            }
+            xdestino = DatosX(xfuente, grado, desde, hasta);
+        }
+        private double[,] DatosX(double[] xfuente, int grado, int desde, int hasta)
+        {
+            int terminos = grado + 1;
+            double[,] xdestino = new double[terminos, hasta - desde];
+            double xi;
+            double xp;
+            int k = 0;
+            for (int i = desde; i < hasta; i++)
+            {
+                xdestino[0, k] = 1;
+                xi = xp = xfuente[i];
+                for (int j = 1; j < terminos; j++)
+                {
+                    xdestino[j, k] = xp;
+                    xp *= xi;
+                }
+                k++;
+            }
+            return xdestino;
+        }
+        private double[] FraccionaW(double[] w, int desde, int hasta)
+        {
+            double[] wf = new double[hasta - desde];
+            int k = 0;
+            for (int i = desde; i < hasta; i++)
+            {
+                wf[k] = w[i];
+                k++;
+            }
+            return wf;
+        }
+        private bool Regresion(RegresionLineal rl, double[] w, int grado)
+        {
+            int n = es_actual.x.Length;
+            double[] y = null;
+            double[,] x = null;
+
+            // Realizar dos ajustes, ambos con 2/3 de los datos:
+            //  1. desde el dato 0 hasta el dato 2/3 del total
+            //  2. desde el dato 1/3 hasta el último dato
+
+            int desde_a = 0;
+            int hasta_a = (2 * n) / 3;
+            DatosXY(es_actual.y, ref y, es_actual.x, ref x, grado, desde_a, hasta_a);
+            RegresionLineal rlA = new RegresionLineal();
+            if (!rlA.Regress(y, x, FraccionaW(w, desde_a, hasta_a), 0))
+            {
+                return false;
+            }
+            int desde_b = n / 3;
+            int hasta_b = n;
+            DatosXY(es_actual.y, ref y, es_actual.x, ref x, grado, desde_b, hasta_b);
+            RegresionLineal rlB = new RegresionLineal();
+            if (!rlB.Regress(y, x, FraccionaW(w, desde_b, hasta_b), 0))
+            {
+                return false;
+            }
+
+            // Fusionar los dos ajustes.
+
+            DatosXY(es_actual.y, ref y, es_actual.x, ref x, grado, 0, n);
+            Soldar(w, x, y, rlA, rlB, rl, desde_a, hasta_a, desde_b, hasta_b);
+            return true;
+        }
+        private void Soldar(double[] w, double[,] x, double[] y, RegresionLineal linRegFteA, RegresionLineal linRegFteB, RegresionLineal linRegDestino, int desdeA, int hastaA, int desdeB, int hastaB)
+        {
+            // Unir las dos regresiones A y B
+
+            int primer_compartido = desdeB;
+            int ultimo_compartido = hastaA;
+            double numero_compartidos = ultimo_compartido - primer_compartido;
+            int terminos_polinomio = x.GetLength(0);
+            linRegDestino.CA = new double[terminos_polinomio];
+            linRegDestino.CB = new double[terminos_polinomio];
+            linRegDestino.Ycalc = new double[hastaB];
+            linRegDestino.SDVMovil = new double[hastaB];
+
+            // Datos de A
+
+            int k = 0;
+            for (int i = desdeA; i < primer_compartido; i++)
+            {
+                linRegDestino.Ycalc[k] = linRegFteA.Ycalc[k];
+                linRegDestino.SDVMovil[k] = linRegFteA.SDVMovil[k];
+                k++;
+            }
+            linRegDestino.RYSQa = linRegFteA.RYSQa;
+            linRegDestino.FRega = linRegFteA.FRega;
+            linRegDestino.SDVErra = linRegFteA.SDVErra;
+            for (int i = 0; i < terminos_polinomio; i++)
+            {
+                linRegDestino.CA[i] = linRegFteA.CA[i];
+            }
+
+            // Para los datos compartidos se pondera con peso variable de 0 (primer dato compartido por B) a 1 (último dato compartido por B), de forma lineal
+
+            double pondera_b;
+            int kb = 0;
+            for (int i = primer_compartido; i < ultimo_compartido; i++)
+            {
+                pondera_b = kb / numero_compartidos;
+                linRegDestino.Ycalc[k] = (1 - pondera_b) * linRegFteA.Ycalc[k] + pondera_b * linRegFteB.Ycalc[kb];
+                linRegDestino.SDVMovil[k] = (linRegFteA.SDVMovil[k] + linRegFteB.SDVMovil[kb]) / 2;
+                k++;
+                kb++;
+            }
+
+            // Datos de B
+
+            for (int i = ultimo_compartido; i < hastaB; i++)
+            {
+                linRegDestino.Ycalc[k] = linRegFteB.Ycalc[kb];
+                linRegDestino.SDVMovil[k] = linRegFteB.SDVMovil[kb];
+                k++;
+                kb++;
+            }
+            linRegDestino.RYSQb = linRegFteB.RYSQa;
+            linRegDestino.FRegb = linRegFteB.FRega;
+            linRegDestino.SDVErrb = linRegFteB.SDVErra;
+            for (int i = 0; i < terminos_polinomio; i++)
+            {
+                linRegDestino.CB[i] = linRegFteB.CA[i];
+            }
+
+            // Estadísticas del ajuste fusionado
+
+            linRegDestino.Estadisticas(y, x, w, 0);
+        }
         private bool AjustaPolinomio(double corte)
         {
             const int MAX_GRADO = 10;
             int n = es_actual.x.Length;
-            double[] y = new double[n];
+
             double[] w = new double[n];
-            for (int k = 0; k < n; k++)
+            for (int i = 0; i < n; i++)
             {
-                w[k] = 1;
-                y[k] = es_actual.y[k];
+                w[i] = 1;
             }
-            double[,] x;
             int grado = 4;
-            x = DatosX(grado);
-            if (!regLin.Regress(y, x, w, 0))
+            if (!Regresion(regLin, w, grado))
             {
                 MessageBox.Show(Idioma.msg[Idioma.lengua, 139], Idioma.msg[Idioma.lengua, 140], MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
             AnulaPicos(w, corte);
-            if (!regLin.Regress(y, x, w, 0))
+            if (!Regresion(regLin, w, grado))
             {
                 MessageBox.Show(Idioma.msg[Idioma.lengua, 139], Idioma.msg[Idioma.lengua, 140], MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
@@ -4805,22 +5095,20 @@ namespace ExploraFITS
             double r2;
             do
             {
-                r2 = regLin.RYSQ;
+                r2 = Math.Min(regLin.RYSQa, regLin.RYSQb);
                 grado++;
-                x = DatosX(grado);
-                if (!regLin.Regress(y, x, w, 0))
+                if (!Regresion(regLin, w, grado))
                 {
                     MessageBox.Show(Idioma.msg[Idioma.lengua, 139], Idioma.msg[Idioma.lengua, 140], MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
                 }
-            } while (regLin.RYSQ > r2 && grado < MAX_GRADO);
-            if (regLin.RYSQ < r2)
+            } while (Math.Min(regLin.RYSQa, regLin.RYSQb) > r2 && grado < MAX_GRADO);
+            if (Math.Min(regLin.RYSQa, regLin.RYSQb) < r2)
             {
                 // Retroceder un grado
 
                 grado--;
-                x = DatosX(grado);
-                if (!regLin.Regress(y, x, w, 0))
+                if (!Regresion(regLin, w, grado))
                 {
                     MessageBox.Show(Idioma.msg[Idioma.lengua, 139], Idioma.msg[Idioma.lengua, 140], MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
@@ -4830,31 +5118,12 @@ namespace ExploraFITS
             // Realiza una última regresión anulando los picos conforme a la regresión anterior
 
             AnulaPicos(w, corte);
-            if (!regLin.Regress(y, x, w, 0))
+            if (!Regresion(regLin, w, grado))
             {
                 MessageBox.Show(Idioma.msg[Idioma.lengua, 139], Idioma.msg[Idioma.lengua, 140], MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
             return true;
-        }
-        private double[,] DatosX(int grado)
-        {
-            int terminos = grado + 1;
-            int n = es_actual.x.Length;
-            double[,] x = new double[terminos, n];
-            double xi;
-            double xp;
-            for (int k = 0; k < n; k++)
-            {
-                x[0, k] = 1;
-                xi = xp = es_actual.x[k];
-                for (int j = 1; j < terminos; j++)
-                {
-                    x[j, k] = xp;
-                    xp *= xi;
-                }
-            }
-            return x;
         }
         private void AnulaPicos(double[] w, double corte)
         {
@@ -5145,10 +5414,10 @@ namespace ExploraFITS
                     candidato = k;
                     valor = es_actual.y[k];
                     tendencia = es_actual.y[k] > regLin.Ycalc[k];
-                    
+
                     // Mientras se diferencie del ajuste en mas de corte/2 se considera el mismo pico
 
-                    while (k1 < n && Math.Abs(es_actual.y[k1] - regLin.Ycalc[k1]) > corte/2)
+                    while (k1 < n && Math.Abs(es_actual.y[k1] - regLin.Ycalc[k1]) > corte / 2)
                     {
                         if (tendencia)
                         {
@@ -5430,6 +5699,9 @@ namespace ExploraFITS
                         break;
                     case 4:
                         panel_img.Dibuja(datosf3, true, j);
+                        break;
+                    case 6:
+                        panel_img.Dibuja(datosl3, true, j);
                         break;
                     default:
                         panel_img.Dibuja(datosd3, true, j);
@@ -5723,6 +5995,10 @@ namespace ExploraFITS
                                 fs.Read(bytes_valor, 0, 4);
                                 datosf[i1, i2] += BitConverter.ToSingle(bytes_valor);
                                 break;
+                            case 6:
+                                fs.Read(bytes_valor, 0, 8);
+                                datosl[i1, i2] += BitConverter.ToInt64(bytes_valor);
+                                break;
                             case 5:
                                 fs.Read(bytes_valor, 0, 8);
                                 datosf[i1, i2] += (float)BitConverter.ToDouble(bytes_valor);
@@ -5827,6 +6103,10 @@ namespace ExploraFITS
                             case 4:
                                 fs.Read(bytes_valor, 0, 4);
                                 v_dato = BitConverter.ToSingle(bytes_valor);
+                                break;
+                            case 6:
+                                fs.Read(bytes_valor, 0, 8);
+                                v_dato = BitConverter.ToInt64(bytes_valor);
                                 break;
                             default:
                                 fs.Read(bytes_valor, 0, 8);
@@ -6000,6 +6280,10 @@ namespace ExploraFITS
                                 fs.Read(bytes_valor, 0, 4);
                                 v_dato = BitConverter.ToSingle(bytes_valor);
                                 break;
+                            case 6:
+                                fs.Read(bytes_valor, 0, 8);
+                                v_dato = BitConverter.ToInt64(bytes_valor);
+                                break;
                             default:
                                 fs.Read(bytes_valor, 0, 8);
                                 v_dato = (float)BitConverter.ToDouble(bytes_valor);
@@ -6108,6 +6392,10 @@ namespace ExploraFITS
                             case 4:
                                 fs.Read(bytes_valor, 0, 4);
                                 v_dato = BitConverter.ToSingle(bytes_valor);
+                                break;
+                            case 6:
+                                fs.Read(bytes_valor, 0, 8);
+                                v_dato = BitConverter.ToInt64(bytes_valor);
                                 break;
                             default:
                                 fs.Read(bytes_valor, 0, 8);
@@ -6338,9 +6626,9 @@ namespace ExploraFITS
 
         private void B_exporta_fits_Click(object sender, EventArgs e)
         {
-            ExtraeFITS(FICHERO_FITS);
+            ExtraeFITS(FICHERO_FITS, 0);
         }
-        private bool ExtraeFITS(string fichero)
+        private bool ExtraeFITS(string fichero, int fracciones)
         {
             FileStream fs = new FileStream(fichero, FileMode.Open, FileAccess.Read, FileShare.Read);
             if (fs == null) return false;
@@ -6453,6 +6741,10 @@ namespace ExploraFITS
                     {
                         hdu_act.clase_dato = 5;
                     }
+                    else if (BITPIX > 0 && hdu_act.byPorDato == 8)
+                    {
+                        hdu_act.clase_dato = 6;
+                    }
                     else
                     {
                         MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 7], cHDU, tipoDato, byPorDato), Idioma.msg[Idioma.lengua, 6], MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -6497,12 +6789,24 @@ namespace ExploraFITS
                     {
                         // Tabla binaria
 
-                        fidat = Path.Combine(carpeta, string.Format("{0}_{1}_tab_b.csv", fichero_sal, cHDU + 1));
-                        fe = new FileStream(fidat, FileMode.Create, FileAccess.Write, FileShare.Read);
-                        sw = new StreamWriter(fe, Encoding.UTF8);
-                        if (NAXIS == 3)
+                        if (fracciones == 0)
                         {
-                            for (int i3 = 0; i3 < NAXISn[2]; i3++)
+                            fidat = Path.Combine(carpeta, string.Format("{0}_{1}_tab_b.csv", fichero_sal, cHDU + 1));
+                            fe = new FileStream(fidat, FileMode.Create, FileAccess.Write, FileShare.Read);
+                            sw = new StreamWriter(fe, Encoding.UTF8);
+                            if (NAXIS == 3)
+                            {
+                                for (int i3 = 0; i3 < NAXISn[2]; i3++)
+                                {
+                                    if (!ExtraeTB(fs, sw, le))
+                                    {
+                                        RecuperaParametros(p);
+                                        Disponible(true);
+                                        return false;
+                                    }
+                                }
+                            }
+                            else
                             {
                                 if (!ExtraeTB(fs, sw, le))
                                 {
@@ -6514,11 +6818,26 @@ namespace ExploraFITS
                         }
                         else
                         {
-                            if (!ExtraeTB(fs, sw, le))
+                            if (NAXIS == 3)
                             {
-                                RecuperaParametros(p);
-                                Disponible(true);
-                                return false;
+                                for (int i3 = 0; i3 < NAXISn[2]; i3++)
+                                {
+                                    if (!ExtraeTB(fs, carpeta, fichero_sal, cHDU, fracciones, le, i3))
+                                    {
+                                        RecuperaParametros(p);
+                                        Disponible(true);
+                                        return false;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if (!ExtraeTB(fs, carpeta, fichero_sal, cHDU, fracciones, le, -1))
+                                {
+                                    RecuperaParametros(p);
+                                    Disponible(true);
+                                    return false;
+                                }
                             }
                         }
                     }
@@ -6818,6 +7137,9 @@ namespace ExploraFITS
                         case 4:
                             sw.Write(string.Format("{0};", BitConverter.ToSingle(bytesDato)));
                             break;
+                        case 6:
+                            sw.Write(string.Format("{0};", BitConverter.ToInt64(bytesDato)));
+                            break;
                         default:
                             sw.Write(string.Format("{0};", BitConverter.ToDouble(bytesDato)));
                             break;
@@ -6906,6 +7228,7 @@ namespace ExploraFITS
                             v = hdu_act.byPorDato switch
                             {
                                 2 => BitConverter.ToInt16(bytesDato),
+                                8 => BitConverter.ToInt64(bytesDato),
                                 _ => BitConverter.ToInt32(bytesDato),
                             };
                         }
@@ -7225,6 +7548,338 @@ namespace ExploraFITS
                 }
                 sw.WriteLine("");
                 sw.Flush();
+            }
+            v_leidos.Text = string.Format("{0:N0}", contador);
+            return true;
+        }
+        private bool ExtraeTB(FileStream fs, string carpeta, string fichero_sal, int cHDU, int fracciones, bool le, int eje)
+        {
+            string fidat;
+            FileStream fe;
+            StreamWriter sw;
+            int n_fraccion = 0;
+            if (eje == -1)
+            {
+                fidat = Path.Combine(carpeta, string.Format("{0}_{1}_{2:D4}_tab_b.csv", fichero_sal, cHDU + 1, n_fraccion));
+            }
+            else
+            {
+                fidat = Path.Combine(carpeta, string.Format("{0}_{1}_{2}_{3:D4}_tab_b.csv", fichero_sal, cHDU + 1, eje, n_fraccion));
+            }
+            fe = new FileStream(fidat, FileMode.Create, FileAccess.Write, FileShare.Read);
+            sw = new StreamWriter(fe, Encoding.UTF8);
+            bool[] quecols = ExportaCabeceraBin(sw);
+            if (quecols == null) return false;
+            int r;
+            int col;
+            int ind;
+            int c_fraccion = 0;
+            int contador = 0;
+            for (int i2 = 0; i2 < NAXISn[1]; i2++)
+            {
+                contador++;
+                if (contador % 100 == 0)
+                {
+                    v_leidos.Text = string.Format("{0:N0}", contador);
+                    Application.DoEvents();
+                }
+                col = 0;
+                while (col < TFIELDS)
+                {
+                    if ((ind = TFORM[col].IndexOf("L")) != -1)
+                    {
+                        // 1 byte (lógico)
+
+                        r = Rep(TFORM[col], ind);
+                        for (int k = 0; k < r; k++)
+                        {
+                            if (quecols[col]) sw.Write(";");
+                            fs.Seek(1, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("X")) != -1)
+                    {
+                        // 1 bit
+
+                        r = Rep(TFORM[col], ind);
+                        for (int k = 0; k < r; k++)
+                        {
+                            if (quecols[col]) sw.Write(";");
+                            fs.Seek(1, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("B")) != -1)
+                    {
+                        // 1 byte (byte)
+
+                        r = Rep(TFORM[col], ind);
+                        if (quecols[col])
+                        {
+                            for (int k = 0; k < r; k++)
+                            {
+                                sw.Write(string.Format("{0};", (byte)fs.ReadByte()));
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(r, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("S")) != -1)
+                    {
+                        // 1 byte con signo (byte)
+
+                        r = Rep(TFORM[col], ind);
+                        if (quecols[col])
+                        {
+                            for (int k = 0; k < r; k++)
+                            {
+                                sw.Write(string.Format("{0};", (sbyte)fs.ReadByte()));
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(r, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("I")) != -1)
+                    {
+                        // 2 bytes (entero)
+
+                        if (quecols[col])
+                        {
+                            if (!ElementosCeldaFichero(fs, sw, le, 1, 2, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(2, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("U")) != -1)
+                    {
+                        // 2 bytes (entero sin signo)
+
+                        if (quecols[col])
+                        {
+                            if (!ElementosCeldaFichero(fs, sw, le, 2, 2, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(2, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("J")) != -1)
+                    {
+                        // 4 bytes (entero)
+
+                        if (quecols[col])
+                        {
+                            if (!ElementosCeldaFichero(fs, sw, le, 3, 4, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(4, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("V")) != -1)
+                    {
+                        // 4 bytes (entero sin signo)
+
+                        if (quecols[col])
+                        {
+                            if (!ElementosCeldaFichero(fs, sw, le, 4, 4, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(4, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("K")) != -1)
+                    {
+                        // 8 bytes (entero)
+
+                        if (quecols[col])
+                        {
+                            if (!ElementosCeldaFichero(fs, sw, le, 5, 8, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(8, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("E")) != -1)
+                    {
+                        // 4 bytes (simple precisión)
+
+                        if (quecols[col])
+                        {
+                            if (!ElementosCeldaFichero(fs, sw, le, 6, 4, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(4, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("D")) != -1)
+                    {
+                        // 8 bytes (doble precisión)
+
+                        if (quecols[col])
+                        {
+                            if (!ElementosCeldaFichero(fs, sw, le, 7, 8, ind, col))
+                            {
+                                sw.Close();
+                                fs.Close();
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(8, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("C")) != -1)
+                    {
+                        // 8 bytes (simple precisión complejo)
+
+                        r = Rep(TFORM[col], ind);
+                        if (quecols[col])
+                        {
+                            for (int k = 0; k < r; k++)
+                            {
+                                fs.Seek(8, SeekOrigin.Current);
+                                sw.Write(";");
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(8 * r, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("M")) != -1)
+                    {
+                        // 16 bytes (doble precisión complejo)
+
+                        r = Rep(TFORM[col], ind);
+                        if (quecols[col])
+                        {
+                            for (int k = 0; k < r; k++)
+                            {
+                                fs.Seek(16, SeekOrigin.Current);
+                                sw.Write(";");
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(16 * r, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("P")) != -1)
+                    {
+                        // 8 bytes (descriptor de array)
+
+                        r = Rep(TFORM[col], ind);
+                        if (quecols[col])
+                        {
+                            for (int k = 0; k < r; k++)
+                            {
+                                fs.Seek(8, SeekOrigin.Current);
+                                sw.Write(";");
+                            }
+                        }
+                        else
+                        {
+                            fs.Seek(8 * r, SeekOrigin.Current);
+                        }
+                    }
+                    else if ((ind = TFORM[col].IndexOf("A")) != -1)
+                    {
+                        // 1 bytes (caracter)
+
+                        int b;
+                        r = Rep(TFORM[col], ind);
+                        int w = ind == (TFORM[col].Length - 1) ? 1 : Convert.ToInt32(TFORM[col][(ind + 1)..]);
+                        if (quecols[col])
+                        {
+                            StringBuilder sb = new StringBuilder(r * w);
+                            for (int k1 = 0; k1 < r; k1++)
+                            {
+                                for (int k2 = 0; k2 < w; k2++)
+                                {
+                                    b = fs.ReadByte();
+                                    if (b != 0) sb.AppendFormat("{0}", Convert.ToChar((byte)b));
+                                }
+                            }
+                            sw.Write(string.Format("{0};", sb.ToString()));
+                        }
+                        else
+                        {
+                            fs.Seek(w * r, SeekOrigin.Current);
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 58], TFORM[col]), Idioma.msg[Idioma.lengua, 57], MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        sw.Close();
+                        fs.Close();
+                        Disponible(true);
+                        return false;
+                    }
+                    col++;
+                }
+                sw.WriteLine("");
+                sw.Flush();
+                c_fraccion++;
+                if (c_fraccion == fracciones)
+                {
+                    sw.Close();
+                    c_fraccion = 0;
+                    n_fraccion++;
+                    if (eje == -1)
+                    {
+                        fidat = Path.Combine(carpeta, string.Format("{0}_{1}_{2:D4}_tab_b.csv", fichero_sal, cHDU + 1, n_fraccion));
+                    }
+                    else
+                    {
+                        fidat = Path.Combine(carpeta, string.Format("{0}_{1}_{2}_{3:D4}_tab_b.csv", fichero_sal, cHDU + 1, eje, n_fraccion));
+                    }
+                    fe = new FileStream(fidat, FileMode.Create, FileAccess.Write, FileShare.Read);
+                    sw = new StreamWriter(fe, Encoding.UTF8);
+                    quecols = ExportaCabeceraBin(sw);
+                    if (quecols == null) return false;
+                    v_leidos.Text = string.Format("{0:N0}", contador);
+                    Application.DoEvents();
+                }
             }
             v_leidos.Text = string.Format("{0:N0}", contador);
             return true;

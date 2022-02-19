@@ -1,8 +1,0 @@
-C:\FITS\FITS\FITS\bin\Release\netcoreapp3.1\publish\camposHL.txt
-C:\FITS\FITS\FITS\bin\Release\netcoreapp3.1\publish\espectros_atomicos.csv
-C:\FITS\FITS\FITS\bin\Release\netcoreapp3.1\publish\idiomas.txt
-C:\FITS\FITS\FITS\bin\Release\netcoreapp3.1\publish\ExploraFits.exe
-C:\FITS\FITS\FITS\bin\Release\netcoreapp3.1\publish\ExploraFits.dll
-C:\FITS\FITS\FITS\bin\Release\netcoreapp3.1\publish\ExploraFits.deps.json
-C:\FITS\FITS\FITS\bin\Release\netcoreapp3.1\publish\ExploraFits.runtimeconfig.json
-C:\FITS\FITS\FITS\bin\Release\netcoreapp3.1\publish\ExploraFits.pdb

@@ -13,10 +13,11 @@ namespace ExploraFITS
 {
     public partial class Form2 : Form
     {
-        public FITS fits;
+        public FITS principal;
         public int clase_dato;
         public int i3;
 
+        public bool fondo_blanco;
         public double ancho_valor_histograma;
         private int modo_convertir_px_coor;
         public int ancho_lienzo;
@@ -176,7 +177,7 @@ namespace ExploraFITS
             public string[] campos;
             public string[] rotulos;
         }
-
+        List<int> ind_lineas = new List<int>();
         public Form2()
         {
             InitializeComponent();
@@ -229,6 +230,10 @@ namespace ExploraFITS
             r_z.Location = new Point(v_z.Location.X - r_z.Width - 4, sup + 8);
             lista_elegidas.Location = new Point(r_z.Location.X - lista_elegidas.Width - 4, sup + 6);
             lista_elegibles.Location = new Point(lista_elegidas.Location.X - lista_elegibles.Width - 4, sup + 6);
+            b_e.Location = new Point(lista_elegibles.Location.X - b_e.Width - 4, sup);
+            v_e.Location = new Point(b_e.Location.X - v_e.Width - 4, sup + 6);
+            v_i.Location = new Point(v_e.Location.X - v_i.Width - 4, sup + 6);
+            r_i.Location = new Point(v_i.Location.X - r_i.Width - 4, sup + 8);
 
             // Lienzo
 
@@ -241,25 +246,18 @@ namespace ExploraFITS
 
             r_y.Text = string.Empty;
 
+            fondo_blanco = false;
             IniciaControles();
             LeeEspectros();
             CambiaIdioma();
         }
         public void LeeEspectros()
         {
-            FileStream fe = new FileStream(Path.Combine(fits.sendaApp, "espectros_atomicos.csv"), FileMode.Open, FileAccess.Read, FileShare.Read);
-            StreamReader r = new StreamReader(fe);
             lista_elegibles.Items.Clear();
-            string linea;
-            string[] sd;
-            while (!r.EndOfStream)
+            foreach (string s in principal.lista_elegibles_principal)
             {
-                linea = r.ReadLine();
-                sd = linea.Split(';');
-                lista_elegibles.Items.Add(string.Format("{0,10:f3}  {1}", sd[2], sd[3]));
+                lista_elegibles.Items.Add(s);
             }
-            r.Close();
-
         }
         public void CambiaIdioma()
         {
@@ -335,6 +333,7 @@ namespace ExploraFITS
         }
         public void SelInterfaz(int cual)
         {
+            if (cual == 0) fondo_blanco = false;
             var que = cual switch
             {
                 0 => true,
@@ -367,27 +366,38 @@ namespace ExploraFITS
             lista_elegibles.Visible = !que;
             lista_elegidas.Visible = !que;
             lista_picos.Visible = !que;
+            r_i.Visible = !que;
+            v_i.Visible = !que;
+            v_e.Visible = !que;
+            b_e.Visible = !que;
         }
         private void R_y_Paint(object sender, PaintEventArgs e)
         {
-            if (fits.CTYPE == null) return;
+            if (principal.CTYPE == null) return;
             var g = e.Graphics;
-            g.DrawString(fits.CTYPE[1], new Font("Segoe UI", 9, FontStyle.Bold, GraphicsUnit.Point), Brushes.Blue, 0, 0, new StringFormat(StringFormatFlags.DirectionVertical));
+            g.DrawString(principal.CTYPE[1], new Font("Segoe UI", 9, FontStyle.Bold, GraphicsUnit.Point), Brushes.Blue, 0, 0, new StringFormat(StringFormatFlags.DirectionVertical));
         }
         private void B_volver_Click(object sender, EventArgs e)
         {
-            fits.TopLevel = true;
-            fits.BringToFront();
-            fits.Focus();
+            principal.TopLevel = true;
+            principal.BringToFront();
+            principal.Focus();
         }
         private void B_redibuja_Click(object sender, EventArgs e)
         {
-            if (fits.NAXIS == 3) Redibuja(i3);
+            if (ModifierKeys.HasFlag(Keys.Control))
+            {
+                // Invertir el color
+
+                fondo_blanco = !fondo_blanco;
+            }
+
+            if (principal.NAXIS == 3) Redibuja(i3);
             else Redibuja();
         }
         private void B_salvar_Click(object sender, EventArgs e)
         {
-            if (fits.img == null) return;
+            if (principal.img == null) return;
             SaveFileDialog ficheroescritura = new SaveFileDialog()
             {
                 Filter = "PNG |*.png;*.bmp|TODO |*.*",
@@ -395,23 +405,23 @@ namespace ExploraFITS
             };
             if (ficheroescritura.ShowDialog() == DialogResult.OK)
             {
-                fits.Disponible(false);
+                principal.Disponible(false);
                 try
                 {
-                    if (fits.alta_resolucion.Checked)
+                    if (principal.alta_resolucion.Checked)
                     {
-                        fits.img.Save(ficheroescritura.FileName, ImageFormat.Bmp);
+                        principal.img.Save(ficheroescritura.FileName, ImageFormat.Bmp);
                     }
                     else
                     {
-                        fits.img.Save(ficheroescritura.FileName, ImageFormat.Png);
+                        principal.img.Save(ficheroescritura.FileName, ImageFormat.Png);
                     }
                 }
                 catch (Exception ee)
                 {
                     MessageBox.Show(ee.Message, "Img", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
-                fits.Disponible(true);
+                principal.Disponible(true);
                 Console.Beep();
             }
         }
@@ -426,7 +436,7 @@ namespace ExploraFITS
         private void B_cimas_Click(object sender, EventArgs e)
         {
             if (multiplicador_y > 1) return;
-            if (fits.NAXIS == 0 || fits.NAXISn == null || fits.NAXISn[0] == 0 || estadistica == null) return;
+            if (principal.NAXIS == 0 || principal.NAXISn == null || principal.NAXISn[0] == 0 || estadistica == null) return;
 
             const int R_MAX = 1000;
 
@@ -457,21 +467,21 @@ namespace ExploraFITS
             }
             else
             {
-                dif_brillo = brillo_minimo * Convert.ToDouble(v_margen_brillo.Text.Trim().Replace(fits.s_millar, fits.s_decimal)) / 100;
+                dif_brillo = brillo_minimo * Convert.ToDouble(v_margen_brillo.Text.Trim().Replace(principal.s_millar, principal.s_decimal)) / 100;
 
                 // Para evitar comparaciones con cero
 
                 if (dif_brillo < 1.0e-20) dif_brillo = 1.0e-20;
             }
-            fits.Disponible(false);
+            principal.Disponible(false);
 
             // Se trabaja con una copia de los datos originales pasados a double
             // con 'reduccion' mayor que 1 se toma el mayor valor del cuadrado 'reduccion * reduccion'
 
-            int hastax = (fits.NAXISn[0] - reduccion);
-            int hastay = (fits.NAXISn[1] - reduccion);
-            int nejex = fits.NAXISn[0] / reduccion;
-            int nejey = fits.NAXISn[1] / reduccion;
+            int hastax = (principal.NAXISn[0] - reduccion);
+            int hastay = (principal.NAXISn[1] - reduccion);
+            int nejex = principal.NAXISn[0] / reduccion;
+            int nejey = principal.NAXISn[1] / reduccion;
             double[,] copia = new double[nejex, nejey];
 
             int nx;
@@ -697,7 +707,7 @@ namespace ExploraFITS
                             for (int k2 = 0; k2 < radio * reduccion; k2++)
                             {
                                 ik2 = pyv + k2;
-                                if (ik1 >= 0 && ik1 < fits.NAXISn[0] && ik2 >= 0 && ik2 < fits.NAXISn[1])
+                                if (ik1 >= 0 && ik1 < principal.NAXISn[0] && ik2 >= 0 && ik2 < principal.NAXISn[1])
                                 {
                                     valor = Dato(ik1, ik2);
                                     if (max < valor) max = valor;
@@ -713,7 +723,7 @@ namespace ExploraFITS
                             for (int k2 = 0; k2 < radio * reduccion; k2++)
                             {
                                 ik2 = pyv + k2;
-                                if (ik1 >= 0 && ik1 < fits.NAXISn[0] && ik2 >= 0 && ik2 < fits.NAXISn[1])
+                                if (ik1 >= 0 && ik1 < principal.NAXISn[0] && ik2 >= 0 && ik2 < principal.NAXISn[1])
                                 {
                                     valor = Dato(ik1, ik2);
                                     if (max - valor <= dif_brillo)
@@ -742,7 +752,7 @@ namespace ExploraFITS
             if (cimas.Count > 0)
             {
                 b_salva_cimas.Visible = true;
-                using Graphics g = Graphics.FromImage(fits.img);
+                using Graphics g = Graphics.FromImage(principal.img);
                 int bloque = cimas.Count / 100;
                 if (bloque < 10) bloque = 10;
                 int menos;
@@ -770,7 +780,7 @@ namespace ExploraFITS
             r_nombre_marca_1.Text = string.Empty;
             lienzo.Refresh();
             MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 78], cimas.Count), Idioma.msg[Idioma.lengua, 77], MessageBoxButtons.OK, MessageBoxIcon.Information);
-            fits.Disponible(true);
+            principal.Disponible(true);
         }
         private void B_salva_cimas_Click(object sender, EventArgs e)
         {
@@ -801,35 +811,35 @@ namespace ExploraFITS
         }
         private void B_escalar_Click(object sender, EventArgs e)
         {
-            fits.f_referencia = new Form3
+            principal.f_referencia = new Form3
             {
-                fits = fits
+                fits = principal
             };
-            if (fits.proyeccion[1] == 6)
+            if (principal.proyeccion[1] == 6)
             {
-                fits.f_referencia.Inicializa(fits.CRPIX[0], fits.CRPIX[1], fits.CRVAL[0], fits.CRVAL[1], fits.CDELT[0], fits.CDELT[1]);
+                principal.f_referencia.Inicializa(principal.CRPIX[0], principal.CRPIX[1], principal.CRVAL[0], principal.CRVAL[1], principal.CDELT[0], principal.CDELT[1]);
             }
-            fits.f_referencia.ShowDialog(this);
-            if (!fits.f_referencia_cancelado)
+            principal.f_referencia.ShowDialog(this);
+            if (!principal.f_referencia_cancelado)
             {
-                fits.proyeccion[0] = 0;
-                fits.proyeccion[2] = 0;
-                fits.CD1[0] = 0;
-                fits.CD1[1] = 0;
-                fits.CD2[0] = 0;
-                fits.CD2[0] = 0;
-                fits.CRPIX = new double[2];
-                fits.CRVAL = new double[2];
-                fits.CDELT = new double[2];
-                fits.proyeccion[1] = 2 + 2 + 2;
+                principal.proyeccion[0] = 0;
+                principal.proyeccion[2] = 0;
+                principal.CD1[0] = 0;
+                principal.CD1[1] = 0;
+                principal.CD2[0] = 0;
+                principal.CD2[0] = 0;
+                principal.CRPIX = new double[2];
+                principal.CRVAL = new double[2];
+                principal.CDELT = new double[2];
+                principal.proyeccion[1] = 2 + 2 + 2;
                 modo_convertir_px_coor = 1;
-                fits.punto_referencia = 4;
-                fits.CRPIX[0] = fits.f_referencia_crpix1;
-                fits.CRPIX[1] = fits.f_referencia_crpix2;
-                fits.CRVAL[0] = fits.f_referencia_crval1;
-                fits.CRVAL[1] = fits.f_referencia_crval2;
-                fits.CDELT[0] = fits.f_referencia_cdelt1;
-                fits.CDELT[1] = fits.f_referencia_cdelt2;
+                principal.punto_referencia = 4;
+                principal.CRPIX[0] = principal.f_referencia_crpix1;
+                principal.CRPIX[1] = principal.f_referencia_crpix2;
+                principal.CRVAL[0] = principal.f_referencia_crval1;
+                principal.CRVAL[1] = principal.f_referencia_crval2;
+                principal.CDELT[0] = principal.f_referencia_cdelt1;
+                principal.CDELT[1] = principal.f_referencia_cdelt2;
                 Redibuja();
                 escalando = true;
                 esperando_par = false;
@@ -846,32 +856,32 @@ namespace ExploraFITS
         }
         private void B_escalar_ok_Click(object sender, EventArgs e)
         {
-            fits.CRPIX[0] = 1;
-            fits.CRPIX[1] = 1;
+            principal.CRPIX[0] = 1;
+            principal.CRPIX[1] = 1;
             RegLinealSimple rl;
             rl = RegresionLinealSimple(escalar_pixelx, escalar_ar, escalar_n_puntos);
-            fits.CDELT[0] = rl.m;
-            fits.CRVAL[0] = rl.a;
+            principal.CDELT[0] = rl.m;
+            principal.CRVAL[0] = rl.a;
             rl = RegresionLinealSimple(escalar_pixely, escalar_de, escalar_n_puntos);
-            fits.CDELT[1] = rl.m;
-            fits.CRVAL[1] = rl.a;
+            principal.CDELT[1] = rl.m;
+            principal.CRVAL[1] = rl.a;
 
             Redibuja();
             FinEscalar();
             DialogResult res = MessageBox.Show(Idioma.msg[Idioma.lengua, 104], Idioma.msg[Idioma.lengua, 79], MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (res != DialogResult.Yes) return;
-            fits.CreaFITS(fits.FILENAME, fits.FICHERO_FITS, true, true, Idioma.msg[Idioma.lengua, 94]);
+            principal.CreaFITS(principal.FILENAME, principal.FICHERO_FITS, true, true, Idioma.msg[Idioma.lengua, 94]);
         }
         private void B_ficha_hyperleda_Click(object sender, EventArgs e)
         {
-            if (fits.NAXIS == 0 || fits.NAXISn == null || fits.NAXISn[0] == 0 || estadistica == null) return;
+            if (principal.NAXIS == 0 || principal.NAXISn == null || principal.NAXISn[0] == 0 || estadistica == null) return;
             if (marca_sel[0] == -1) return;
             int ind = marcas[0][marca_sel[0]].indice;
             FichaHyperleda(ind);
         }
         public Ficha FichaHyperleda(int ind)
         {
-            FileStream fe = new FileStream(Path.Combine(fits.sendaApp, fits.fichero_hyperleda), FileMode.Open, FileAccess.Read, FileShare.Read);
+            FileStream fe = new FileStream(Path.Combine(principal.sendaApp, principal.fichero_hyperleda), FileMode.Open, FileAccess.Read, FileShare.Read);
             fe.Seek(ind, SeekOrigin.Begin);
             byte[] linea = new byte[1024];
             int nl;
@@ -893,7 +903,7 @@ namespace ExploraFITS
                 campos = s.Split(';')
             };
             ficha.rotulos = new string[ficha.campos.Length];
-            fe = new FileStream(Path.Combine(fits.sendaApp, "camposHL.txt"), FileMode.Open, FileAccess.Read, FileShare.Read);
+            fe = new FileStream(Path.Combine(principal.sendaApp, "camposHL.txt"), FileMode.Open, FileAccess.Read, FileShare.Read);
             StreamReader r = new StreamReader(fe);
             nc = 0;
             while (!r.EndOfStream)
@@ -906,12 +916,12 @@ namespace ExploraFITS
                 ficha.rotulos[nc++] = r.ReadLine();
             }
             r.Close();
-            fits.f_ficha_hyperleda = new Form4
+            principal.f_ficha_hyperleda = new Form4
             {
-                fits = fits
+                fits = principal
             };
-            fits.f_ficha_hyperleda.Datos(ficha.rotulos, ficha.campos);
-            fits.f_ficha_hyperleda.ShowDialog(this);
+            principal.f_ficha_hyperleda.Datos(ficha.rotulos, ficha.campos);
+            principal.f_ficha_hyperleda.ShowDialog(this);
             return ficha;
         }
         private void B_ficha_sao_Click(object sender, EventArgs e)
@@ -975,7 +985,7 @@ namespace ExploraFITS
             184-193    rad    F10.8            RA (J2000.0)
             194-204    rad    F11.8            Dec (J2000.0)
             */
-            if (fits.NAXIS == 0 || fits.NAXISn == null || fits.NAXISn[0] == 0 || estadistica == null) return;
+            if (principal.NAXIS == 0 || principal.NAXISn == null || principal.NAXISn[0] == 0 || estadistica == null) return;
             if (marca_sel[1] == -1) return;
             int ind = marcas[1][marca_sel[1]].indice;
             FichaSAO(ind);
@@ -987,7 +997,7 @@ namespace ExploraFITS
             {
                 campos = new string[nc]
             };
-            FileStream fe = new FileStream(Path.Combine(fits.sendaApp, fits.fichero_sao), FileMode.Open, FileAccess.Read, FileShare.Read);
+            FileStream fe = new FileStream(Path.Combine(principal.sendaApp, principal.fichero_sao), FileMode.Open, FileAccess.Read, FileShare.Read);
             fe.Seek(ind, SeekOrigin.Begin);
             byte[] linea = new byte[cols_sao[nc]];
             fe.Read(linea, 0, linea.Length);
@@ -996,12 +1006,12 @@ namespace ExploraFITS
             {
                 ficha.campos[i] = Encoding.Default.GetString(linea, cols_sao[i] - 1, cols_sao[i + 1] - cols_sao[i]).Trim();
             }
-            fits.f_ficha_sao = new Form5
+            principal.f_ficha_sao = new Form5
             {
-                fits = fits
+                fits = principal
             };
-            fits.f_ficha_sao.Datos(ficha.campos);
-            fits.f_ficha_sao.ShowDialog(this);
+            principal.f_ficha_sao.Datos(ficha.campos);
+            principal.f_ficha_sao.ShowDialog(this);
             return ficha;
         }
         private void Sel_catalogo_SelectedIndexChanged(object sender, EventArgs e)
@@ -1028,22 +1038,22 @@ namespace ExploraFITS
         private void Hyperleda()
         {
             if (multiplicador_y > 1) return;
-            if (fits.NAXIS == 0 || fits.NAXISn == null || fits.NAXISn[0] == 0 || estadistica == null) return;
+            if (principal.NAXIS == 0 || principal.NAXISn == null || principal.NAXISn[0] == 0 || estadistica == null) return;
 
             if (!acotado_x || !acotado_y)
             {
                 MessageBox.Show(Idioma.msg[Idioma.lengua, 82], Idioma.msg[Idioma.lengua, 91], MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            if (fits.indices_hyperleda == null || fits.indices_hyperleda.Count == 0)
+            if (principal.indices_hyperleda == null || principal.indices_hyperleda.Count == 0)
             {
-                fits.Disponible(false);
-                if (!fits.LeeIndicesHyperleda())
+                principal.Disponible(false);
+                if (!principal.LeeIndicesHyperleda())
                 {
-                    fits.Disponible(true);
+                    principal.Disponible(true);
                     return;
                 }
-                fits.Disponible(true);
+                principal.Disponible(true);
             }
             double t;
             if (x_dch < x_izq)
@@ -1062,21 +1072,21 @@ namespace ExploraFITS
                 y_inf = y_sup;
                 y_sup = t;
             }
-            int ri = BuscarAR(fits.indices_hyperleda, x_izq);
-            int rf = BuscarAR(fits.indices_hyperleda, x_dch);
+            int ri = BuscarAR(principal.indices_hyperleda, x_izq);
+            int rf = BuscarAR(principal.indices_hyperleda, x_dch);
             int indice;
             double ar;
             double de;
             Marca m;
             marcas[0] = new List<Marca>();
             int encontradas = 0;
-            if (rf >= ri && rf < fits.indices_hyperleda.Count)
+            if (rf >= ri && rf < principal.indices_hyperleda.Count)
             {
                 for (int i = ri; i <= rf; i++)
                 {
-                    indice = fits.indices_hyperleda[i].indice;
-                    ar = fits.indices_hyperleda[i].al2000;
-                    de = fits.indices_hyperleda[i].de2000;
+                    indice = principal.indices_hyperleda[i].indice;
+                    ar = principal.indices_hyperleda[i].al2000;
+                    de = principal.indices_hyperleda[i].de2000;
                     if (ar >= x_izq && ar <= x_dch && de >= y_sup && de <= y_inf)
                     {
                         // Asegurarse que la marca cae integramente dentro de la imagen
@@ -1087,11 +1097,11 @@ namespace ExploraFITS
                         {
                             continue;
                         }
-                        if (pp.x + medio_lado_marca >= fits.NAXISn[0] || pp.y + medio_lado_marca >= fits.NAXISn[1])
+                        if (pp.x + medio_lado_marca >= principal.NAXISn[0] || pp.y + medio_lado_marca >= principal.NAXISn[1])
                         {
                             continue;
                         }
-                        m = MarcaObjetoCatalogo(indice, fits.indices_hyperleda[i].tipo, ar, de);
+                        m = MarcaObjetoCatalogo(indice, principal.indices_hyperleda[i].tipo, ar, de);
                         marcas[0].Add(m);
                         encontradas++;
                     }
@@ -1110,22 +1120,22 @@ namespace ExploraFITS
         private void Smithsonian()
         {
             if (multiplicador_y > 1) return;
-            if (fits.NAXIS == 0 || fits.NAXISn == null || fits.NAXISn[0] == 0 || estadistica == null) return;
+            if (principal.NAXIS == 0 || principal.NAXISn == null || principal.NAXISn[0] == 0 || estadistica == null) return;
 
             if (!acotado_x || !acotado_y)
             {
                 MessageBox.Show(Idioma.msg[Idioma.lengua, 82], Idioma.msg[Idioma.lengua, 81], MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            if (fits.indices_sao == null || fits.indices_sao.Count == 0)
+            if (principal.indices_sao == null || principal.indices_sao.Count == 0)
             {
-                fits.Disponible(false);
-                if (!fits.LeeIndicesSao())
+                principal.Disponible(false);
+                if (!principal.LeeIndicesSao())
                 {
-                    fits.Disponible(true);
+                    principal.Disponible(true);
                     return;
                 }
-                fits.Disponible(true);
+                principal.Disponible(true);
             }
             double t;
             if (x_dch < x_izq)
@@ -1144,21 +1154,21 @@ namespace ExploraFITS
                 y_inf = y_sup;
                 y_sup = t;
             }
-            int ri = BuscarAR(fits.indices_sao, x_izq);
-            int rf = BuscarAR(fits.indices_sao, x_dch);
+            int ri = BuscarAR(principal.indices_sao, x_izq);
+            int rf = BuscarAR(principal.indices_sao, x_dch);
             int indice;
             double ar;
             double de;
             Marca m;
             marcas[1] = new List<Marca>();
             int encontradas = 0;
-            if (rf >= ri && rf < fits.indices_sao.Count)
+            if (rf >= ri && rf < principal.indices_sao.Count)
             {
                 for (int i = ri; i <= rf; i++)
                 {
-                    indice = fits.indices_sao[i].indice;
-                    ar = fits.indices_sao[i].al2000;
-                    de = fits.indices_sao[i].de2000;
+                    indice = principal.indices_sao[i].indice;
+                    ar = principal.indices_sao[i].al2000;
+                    de = principal.indices_sao[i].de2000;
                     if (ar >= x_izq && ar <= x_dch && de >= y_sup && de <= y_inf)
                     {
                         // Asegurarse que la marca cae integramente dentro de la imagen
@@ -1169,11 +1179,11 @@ namespace ExploraFITS
                         {
                             continue;
                         }
-                        if (pp.x + medio_lado_marca >= fits.NAXISn[0] || pp.y + medio_lado_marca >= fits.NAXISn[1])
+                        if (pp.x + medio_lado_marca >= principal.NAXISn[0] || pp.y + medio_lado_marca >= principal.NAXISn[1])
                         {
                             continue;
                         }
-                        m = MarcaObjetoCatalogo(indice, fits.indices_sao[i].tipo, ar, de);
+                        m = MarcaObjetoCatalogo(indice, principal.indices_sao[i].tipo, ar, de);
                         marcas[1].Add(m);
                         encontradas++;
                     }
@@ -1189,23 +1199,55 @@ namespace ExploraFITS
                 MessageBox.Show(string.Format(Idioma.msg[Idioma.lengua, 84], encontradas), Idioma.msg[Idioma.lengua, 81], MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
-
         private void Lienzo_MouseDown(object sender, MouseEventArgs e)
         {
-            if (fits.img == null) return;
-            if (fits.es_actual != null)
+            if (principal.img == null) return;
+            if (principal.es_actual != null)
             {
                 p_raton_x.Text = string.Format("{0}", e.X);
                 p_raton_y.Text = string.Format("{0}", e.Y);
-                Coordenadas ce = fits.PuntoEspectro(e.X, e.Y);
-                raton_x.Text = string.Format("{0}", ce.x);
+                Coordenadas ce = principal.PuntoEspectro(e.X, e.Y);
                 raton_y.Text = string.Format("{0}", ce.y);
+                double lon_onda = ce.x;
+                double lon_onda_a = lon_onda;
+                double lon_onda_p = lon_onda;
+                
+                // Ajustar al punto del espectro con la X más parecida
 
+                if (lon_onda >= principal.es_actual.minx && lon_onda <= principal.es_actual.maxx)
+                {
+                    for (int i = 0; i < principal.es_actual.x.Length; i++)
+                    {
+                        if (lon_onda == principal.es_actual.x[i])
+                        {
+                            lon_onda = lon_onda_a = lon_onda_p = principal.es_actual.x[i];
+                            break;
+                        }
+                        else if (lon_onda < principal.es_actual.x[i])
+                        {
+                            if (principal.es_actual.x[i] - lon_onda < lon_onda - principal.es_actual.x[i - 1])
+                            {
+                                lon_onda_a = i == 0 ? principal.es_actual.x[i] : principal.es_actual.x[i - 1];
+                                lon_onda = principal.es_actual.x[i];
+                                lon_onda_p = i == principal.es_actual.x.Length - 1 ? principal.es_actual.x[i] : principal.es_actual.x[i + 1];
+                            }
+                            else
+                            {
+                                lon_onda_a = i > 1 ? principal.es_actual.x[i - 2] : i > 0 ? principal.es_actual.x[i - 1] : principal.es_actual.x[i];
+                                lon_onda = i > 0 ? principal.es_actual.x[i - 1] : principal.es_actual.x[i];
+                                lon_onda_p = principal.es_actual.x[i];
+                            }
+                            break;
+                        }
+                    }
+                }
+                raton_x.Text = string.Format("{0}", ce.x);
                 if (ModifierKeys.HasFlag(Keys.Control))
                 {
                     // Añadir la línea atómica más cercana
 
-                    AddLineaAtomica(ce.x);
+                    AddLineaAtomica(lon_onda, lon_onda_a, lon_onda_p);
+                    Redibuja();
                     Console.Beep();
                 }
                 else if (ModifierKeys.HasFlag(Keys.Alt))
@@ -1214,9 +1256,9 @@ namespace ExploraFITS
 
                     double xm;
                     double xma = -1;
-                    for (int i = 0; i < fits.es_actual.x.Length; i++)
+                    for (int i = 0; i < principal.es_actual.x.Length; i++)
                     {
-                        xm = fits.es_actual.x[i];
+                        xm = principal.es_actual.x[i];
                         if (xm > ce.x)
                         {
                             if (picos == null) picos = new List<Pico>();
@@ -1235,6 +1277,7 @@ namespace ExploraFITS
                         }
                         xma = xm;
                     }
+                    Redibuja();
                     Console.Beep();
                 }
                 return;
@@ -1247,19 +1290,19 @@ namespace ExploraFITS
 
             // El mayor en un radio de 1
 
-            byte v = fits.img.GetPixel(px, py).G;
+            byte v = principal.img.GetPixel(px, py).G;
             int r = 1;
             int npx = px;
             int npy = py;
             byte vecino;
             for (int k1 = -r; k1 <= r; k1++)
             {
-                if (px + k1 < 0 || px + k1 >= fits.NAXISn[0]) continue;
+                if (px + k1 < 0 || px + k1 >= principal.NAXISn[0]) continue;
                 for (int k2 = -r; k2 <= r; k2++)
                 {
                     if (k1 == 0 && k2 == 0) continue;
-                    if (py + k2 < 0 || py + k2 >= fits.NAXISn[1]) continue;
-                    vecino = fits.img.GetPixel(px + k1, py + k2).G;
+                    if (py + k2 < 0 || py + k2 >= principal.NAXISn[1]) continue;
+                    vecino = principal.img.GetPixel(px + k1, py + k2).G;
                     if (vecino > v)
                     {
                         npx = px + k1;
@@ -1333,7 +1376,7 @@ namespace ExploraFITS
                             {
                                 case 0:
                                     marca_sel[0] = k;
-                                    r_nombre_marca_1.Text = string.Format("{0} {1}", fits.hyperleda_tipos[m.tipo, 0], NombreMarcaHyperleda(m.indice));
+                                    r_nombre_marca_1.Text = string.Format("{0} {1}", principal.hyperleda_tipos[m.tipo, 0], NombreMarcaHyperleda(m.indice));
                                     ar_catalogo_1.Text = string.Format("{0}", m.al2000);
                                     de_catalogo_1.Text = string.Format("{0}", m.de2000);
                                     break;
@@ -1352,22 +1395,22 @@ namespace ExploraFITS
         }
         private int Vx(int x)
         {
-            if (fits.invertir_x.Checked) return fits.NAXISn[0] - x;
+            if (principal.invertir_x.Checked) return principal.NAXISn[0] - x;
             return x;
         }
         private double Vx(double x)
         {
-            if (fits.invertir_x.Checked) return fits.NAXISn[0] - x;
+            if (principal.invertir_x.Checked) return principal.NAXISn[0] - x;
             return x;
         }
         private int Vy(int y)
         {
-            if (fits.invertir_y.Checked) return fits.NAXISn[1] - y;
+            if (principal.invertir_y.Checked) return principal.NAXISn[1] - y;
             return y;
         }
         private double Vy(double y)
         {
-            if (fits.invertir_y.Checked) return fits.NAXISn[1] - y;
+            if (principal.invertir_y.Checked) return principal.NAXISn[1] - y;
             return y;
         }
 
@@ -1377,34 +1420,34 @@ namespace ExploraFITS
             escalando = false;
             escalar_n_puntos = 0;
             esperando_par = false;
-            r_x.Text = fits.CTYPE[0];
+            r_x.Text = principal.CTYPE[0];
             r_y.Refresh();
-            pixels_x.Text = fits.NAXISn[0].ToString();
-            pixels_y.Text = fits.NAXISn[1].ToString();
-            if (fits.CRPIX != null && fits.CRPIX[0] != -1 && fits.CRVAL != null && fits.CRVAL[0] > double.MinValue)
+            pixels_x.Text = principal.NAXISn[0].ToString();
+            pixels_y.Text = principal.NAXISn[1].ToString();
+            if (principal.CRPIX != null && principal.CRPIX[0] != -1 && principal.CRVAL != null && principal.CRVAL[0] > double.MinValue)
             {
-                crpix_1.Text = Vx(fits.CRPIX[0]).ToString();
-                crval_1.Text = fits.CRVAL[0].ToString();
+                crpix_1.Text = Vx(principal.CRPIX[0]).ToString();
+                crval_1.Text = principal.CRVAL[0].ToString();
             }
             else
             {
                 crpix_1.Text = string.Empty;
                 crval_1.Text = string.Empty;
             }
-            if (fits.CRPIX != null && fits.CRPIX[1] != -1 && fits.CRVAL != null && fits.CRVAL[1] > double.MinValue)
+            if (principal.CRPIX != null && principal.CRPIX[1] != -1 && principal.CRVAL != null && principal.CRVAL[1] > double.MinValue)
             {
-                crpix_2.Text = Vy(fits.CRPIX[1]).ToString();
-                crval_2.Text = fits.CRVAL[1].ToString();
+                crpix_2.Text = Vy(principal.CRPIX[1]).ToString();
+                crval_2.Text = principal.CRVAL[1].ToString();
             }
             else
             {
                 crpix_2.Text = string.Empty;
                 crval_2.Text = string.Empty;
             }
-            if (fits.CUNIT != null && fits.CUNIT[0] != null && fits.CUNIT[1] != null)
+            if (principal.CUNIT != null && principal.CUNIT[0] != null && principal.CUNIT[1] != null)
             {
-                cunit_1.Text = fits.CUNIT[0].ToString();
-                cunit_2.Text = fits.CUNIT[1].ToString();
+                cunit_1.Text = principal.CUNIT[0].ToString();
+                cunit_2.Text = principal.CUNIT[1].ToString();
             }
             else
             {
@@ -1415,17 +1458,17 @@ namespace ExploraFITS
             // Ajusta el lienzo
 
             AjustaLienzo();
-            escala_x = (double)fits.NAXISn[0] / lienzo.Width;
-            escala_y = (double)fits.NAXISn[1] / lienzo.Height;
+            escala_x = (double)principal.NAXISn[0] / lienzo.Width;
+            escala_y = (double)principal.NAXISn[1] / lienzo.Height;
 
             // Crea la imagen y el flujo de bytes para rellenarla
 
-            if (fits.alta_resolucion.Checked)
+            if (principal.alta_resolucion.Checked)
             {
                 // RGB de 16 bits sin canal alfa
                 // 6 bytes (48 bits) por pixel
 
-                fits.img = new Bitmap(ancho_img_datos, alto_img_datos, PixelFormat.Format48bppRgb);
+                principal.img = new Bitmap(ancho_img_datos, alto_img_datos, PixelFormat.Format48bppRgb);
                 flujo = new byte[6 * ancho_img_datos * alto_img_datos];
             }
             else
@@ -1433,7 +1476,7 @@ namespace ExploraFITS
                 // RGB de 8 bits sin canal alfa
                 // 3 bytes (24 bits) por pixel
 
-                fits.img = new Bitmap(ancho_img_datos, alto_img_datos, PixelFormat.Format24bppRgb);
+                principal.img = new Bitmap(ancho_img_datos, alto_img_datos, PixelFormat.Format24bppRgb);
                 flujo = new byte[3 * ancho_img_datos * alto_img_datos];
             }
 
@@ -1455,16 +1498,16 @@ namespace ExploraFITS
             v_sup_y.Text = string.Empty;
             v_dch_x.Text = string.Empty;
             v_inf_y.Text = string.Empty;
-            if (fits.NAXISn[1] == 1)
+            if (principal.NAXISn[1] == 1)
             {
                 // Vector. Posiblemente un espectro
 
                 modo_convertir_px_coor = 1;
-                if (fits.CRPIX != null && fits.CRPIX[0] != -1 && fits.CRVAL != null && fits.CRVAL[0] > double.MinValue && Math.Abs(fits.CDELT[0]) > 1e-20)
+                if (principal.CRPIX != null && principal.CRPIX[0] != -1 && principal.CRVAL != null && principal.CRVAL[0] > double.MinValue && Math.Abs(principal.CDELT[0]) > 1e-20)
                 {
-                    x_izq = fits.CRVAL[0] - fits.CRPIX[0] * fits.CDELT[0];
-                    x_dch = fits.CRVAL[0] + (fits.NAXISn[0] - fits.CRPIX[0]) * fits.CDELT[0];
-                    if (fits.invertir_x.Checked)
+                    x_izq = principal.CRVAL[0] - principal.CRPIX[0] * principal.CDELT[0];
+                    x_dch = principal.CRVAL[0] + (principal.NAXISn[0] - principal.CRPIX[0]) * principal.CDELT[0];
+                    if (principal.invertir_x.Checked)
                     {
                         v_izq_x.Text = string.Format("{0}", x_dch);
                         v_dch_x.Text = string.Format("{0}", x_izq);
@@ -1480,12 +1523,12 @@ namespace ExploraFITS
                 {
                     x_izq = 0;
                     x_dch = 0;
-                    fits.CDELT[0] = 0;
+                    principal.CDELT[0] = 0;
                 }
-                if (fits.CRPIX != null && fits.CRPIX[1] != -1 && fits.CRVAL != null && fits.CRVAL[1] > double.MinValue && Math.Abs(fits.CDELT[1]) > 1e-20)
+                if (principal.CRPIX != null && principal.CRPIX[1] != -1 && principal.CRVAL != null && principal.CRVAL[1] > double.MinValue && Math.Abs(principal.CDELT[1]) > 1e-20)
                 {
-                    y_sup = fits.CRVAL[1] - fits.CRPIX[1] * fits.CDELT[1];
-                    y_inf = fits.CRVAL[1] + (fits.NAXISn[1] - fits.CRPIX[1]) * fits.CDELT[1];
+                    y_sup = principal.CRVAL[1] - principal.CRPIX[1] * principal.CDELT[1];
+                    y_inf = principal.CRVAL[1] + (principal.NAXISn[1] - principal.CRPIX[1]) * principal.CDELT[1];
                     v_sup_y.Text = string.Format("{0}", y_sup);
                     v_inf_y.Text = string.Format("{0}", y_inf);
                     acotado_y = true;
@@ -1494,26 +1537,26 @@ namespace ExploraFITS
                 {
                     y_sup = 0;
                     y_inf = 0;
-                    fits.CDELT[1] = 0;
+                    principal.CDELT[1] = 0;
                 }
             }
             else
             {
-                if (fits.proyeccion[0] == 2 + 2 + 2 + 2)
+                if (principal.proyeccion[0] == 2 + 2 + 2 + 2)
                 {
                     // CPRIX, CVAL, CD_1, CD_2
                     // Si están los fits.CD1 y fits.CD2 se les da preferencia
 
                     modo_convertir_px_coor = 0;
                 }
-                else if (fits.proyeccion[1] == 2 + 2 + 2)
+                else if (principal.proyeccion[1] == 2 + 2 + 2)
                 {
                     // CPRIX, CVAL, CDELT
                     // Está anulado, se ha convertido a CD_1, CD_2
 
                     modo_convertir_px_coor = 1;
                 }
-                else if (fits.proyeccion[2] == 2 + 2 + 2 + 2 + 2)
+                else if (principal.proyeccion[2] == 2 + 2 + 2 + 2 + 2)
                 {
                     // CPRIX, CVAL, CDELT, PC_1, PC_2
 
@@ -1529,7 +1572,7 @@ namespace ExploraFITS
 
                         // Comprobamos que el determinante no es cero
 
-                        if (fits.CD1[0] * fits.CD2[1] - fits.CD1[1] * fits.CD2[0] != 0)
+                        if (principal.CD1[0] * principal.CD2[1] - principal.CD1[1] * principal.CD2[0] != 0)
                         {
                             /*
                              * x_izq, y_sup (pixel 0, 0)
@@ -1547,11 +1590,11 @@ namespace ExploraFITS
                             Coordenadas arriba = PixelAcoordenadas(0, 0, modo_convertir_px_coor);
                             x_izq = arriba.x;
                             y_sup = arriba.y;
-                            Coordenadas abajo = PixelAcoordenadas(fits.NAXISn[0], fits.NAXISn[1], modo_convertir_px_coor);
+                            Coordenadas abajo = PixelAcoordenadas(principal.NAXISn[0], principal.NAXISn[1], modo_convertir_px_coor);
                             x_dch = abajo.x;
                             y_inf = abajo.y;
 
-                            if (fits.invertir_x.Checked)
+                            if (principal.invertir_x.Checked)
                             {
                                 v_izq_x.Text = string.Format("{0}", x_dch);
                                 v_dch_x.Text = string.Format("{0}", x_izq);
@@ -1564,7 +1607,7 @@ namespace ExploraFITS
 
                             // A efectos visuales
 
-                            if (fits.invertir_y.Checked)
+                            if (principal.invertir_y.Checked)
                             {
                                 v_sup_y.Text = string.Format("{0}", y_inf);
                                 v_inf_y.Text = string.Format("{0}", y_sup);
@@ -1578,17 +1621,17 @@ namespace ExploraFITS
 
                             // Calcular las dimensiones en coordenadas de un pixel con la matriz de rotación-escala
 
-                            UnidadesPixel escala = CalculaCDELT(fits.CD1[0], fits.CD1[1], fits.CD2[0], fits.CD2[1]);
-                            fits.CDELT[0] = escala.CDELT1;
-                            fits.CDELT[1] = escala.CDELT2;
+                            UnidadesPixel escala = CalculaCDELT(principal.CD1[0], principal.CD1[1], principal.CD2[0], principal.CD2[1]);
+                            principal.CDELT[0] = escala.CDELT1;
+                            principal.CDELT[1] = escala.CDELT2;
                         }
                         break;
                     case 1:
-                        if (Math.Abs(fits.CDELT[0]) > 1e-20)
+                        if (Math.Abs(principal.CDELT[0]) > 1e-20)
                         {
-                            x_izq = fits.CRVAL[0] - fits.CRPIX[0] * fits.CDELT[0];
-                            x_dch = fits.CRVAL[0] + (fits.NAXISn[0] - fits.CRPIX[0]) * fits.CDELT[0];
-                            if (fits.invertir_x.Checked)
+                            x_izq = principal.CRVAL[0] - principal.CRPIX[0] * principal.CDELT[0];
+                            x_dch = principal.CRVAL[0] + (principal.NAXISn[0] - principal.CRPIX[0]) * principal.CDELT[0];
+                            if (principal.invertir_x.Checked)
                             {
                                 v_izq_x.Text = string.Format("{0}", x_dch);
                                 v_dch_x.Text = string.Format("{0}", x_izq);
@@ -1600,11 +1643,11 @@ namespace ExploraFITS
                             }
                             acotado_x = true;
                         }
-                        if (Math.Abs(fits.CDELT[1]) > 1e-20)
+                        if (Math.Abs(principal.CDELT[1]) > 1e-20)
                         {
-                            y_sup = fits.CRVAL[1] - fits.CRPIX[1] * fits.CDELT[1];
-                            y_inf = fits.CRVAL[1] + (fits.NAXISn[1] - fits.CRPIX[1]) * fits.CDELT[1];
-                            if (fits.invertir_y.Checked)
+                            y_sup = principal.CRVAL[1] - principal.CRPIX[1] * principal.CDELT[1];
+                            y_inf = principal.CRVAL[1] + (principal.NAXISn[1] - principal.CRPIX[1]) * principal.CDELT[1];
+                            if (principal.invertir_y.Checked)
                             {
                                 v_sup_y.Text = string.Format("{0}", y_inf);
                                 v_inf_y.Text = string.Format("{0}", y_sup);
@@ -1621,15 +1664,15 @@ namespace ExploraFITS
                         break;
                 }
             }
-            color_nan = fits.color_nan;
-            color_cota_inf = fits.color_cota_inf;
-            color_cota_sup = fits.color_cota_sup;
+            color_nan = principal.color_nan;
+            color_cota_inf = principal.color_cota_inf;
+            color_cota_sup = principal.color_cota_sup;
             return true;
         }
         private void AjustaLienzo()
         {
-            ancho_img_datos = fits.NAXISn[0];
-            alto_img_datos = fits.NAXISn[1];
+            ancho_img_datos = principal.NAXISn[0];
+            alto_img_datos = principal.NAXISn[1];
             lienzo.Size = new Size(ancho_lienzo, alto_lienzo);
             if (lienzo.Width >= ancho_img_datos && lienzo.Height >= alto_img_datos)
             {
@@ -1678,28 +1721,28 @@ namespace ExploraFITS
 
         private void VerReferencia()
         {
-            if (fits.img == null) return;
-            if (fits.NAXISn[1] == 1)
+            if (principal.img == null) return;
+            if (principal.NAXISn[1] == 1)
             {
-                if (fits.CRPIX != null && fits.CRPIX[0] != -1 && fits.CRVAL != null && fits.CRVAL[0] > double.MinValue)
+                if (principal.CRPIX != null && principal.CRPIX[0] != -1 && principal.CRVAL != null && principal.CRVAL[0] > double.MinValue)
                 {
-                    Graphics g = Graphics.FromImage(fits.img);
-                    g.DrawRectangle(lapiz_marca_amarilla, (int)fits.CRPIX[0], 0, lado_marca, alto_img_datos);
+                    Graphics g = Graphics.FromImage(principal.img);
+                    g.DrawRectangle(lapiz_marca_amarilla, (int)principal.CRPIX[0], 0, lado_marca, alto_img_datos);
                     lienzo.Refresh();
                 }
             }
             else
             {
-                if (fits.punto_referencia != 4) return;
-                Graphics g = Graphics.FromImage(fits.img);
-                g.DrawRectangle(lapiz_marca_azul, (int)Vx(fits.CRPIX[0]), (int)Vy(fits.CRPIX[1]) * multiplicador_y, lado_marca, lado_marca);
+                if (principal.punto_referencia != 4) return;
+                Graphics g = Graphics.FromImage(principal.img);
+                g.DrawRectangle(lapiz_marca_azul, (int)Vx(principal.CRPIX[0]), (int)Vy(principal.CRPIX[1]) * multiplicador_y, lado_marca, lado_marca);
                 lienzo.Refresh();
             }
         }
         private void MarcaEscalar(int px, int py, bool esperando_par)
         {
-            if (fits.img == null) return;
-            Graphics g = Graphics.FromImage(fits.img);
+            if (principal.img == null) return;
+            Graphics g = Graphics.FromImage(principal.img);
             g.DrawString(esperando_par ? Idioma.msg[Idioma.lengua, 102] : Idioma.msg[Idioma.lengua, 103], new Font("Verdana", 16, FontStyle.Bold), Brushes.LightBlue, px - lado_marca, py - lado_marca);
             lienzo.Refresh();
         }
@@ -1715,7 +1758,7 @@ namespace ExploraFITS
 
             // Dibuja la marca en la imagen visualizada
 
-            Graphics g = Graphics.FromImage(fits.img);
+            Graphics g = Graphics.FromImage(principal.img);
             if (tipo == 0)
             {
                 // Galaxia
@@ -1778,7 +1821,7 @@ namespace ExploraFITS
         {
             int val;
             byte[] sb = new byte[128];
-            FileStream fe = new FileStream(Path.Combine(fits.sendaApp, fits.fichero_hyperleda), FileMode.Open, FileAccess.Read, FileShare.Read);
+            FileStream fe = new FileStream(Path.Combine(principal.sendaApp, principal.fichero_hyperleda), FileMode.Open, FileAccess.Read, FileShare.Read);
             fe.Seek(ind, SeekOrigin.Begin);
             int npyc = 0;
             int nb = 0;
@@ -1805,7 +1848,7 @@ namespace ExploraFITS
         {
             int val;
             byte[] sb = new byte[128];
-            FileStream fe = new FileStream(Path.Combine(fits.sendaApp, fits.fichero_sao), FileMode.Open, FileAccess.Read, FileShare.Read);
+            FileStream fe = new FileStream(Path.Combine(principal.sendaApp, principal.fichero_sao), FileMode.Open, FileAccess.Read, FileShare.Read);
             fe.Seek(ind, SeekOrigin.Begin);
 
             // Lee los 6 primeros bytes: número SAO
@@ -1848,8 +1891,8 @@ namespace ExploraFITS
             switch (modo)
             {
                 case 0:
-                    double inc_x = px - fits.CRPIX[0];
-                    double inc_y = py - fits.CRPIX[1];
+                    double inc_x = px - principal.CRPIX[0];
+                    double inc_y = py - principal.CRPIX[1];
 
                     // Cálculo de la distancia, en coordenadas, al punto de referencia (fits.CRPIX) a partir de la distancia en pixeles
                     /*
@@ -1857,24 +1900,24 @@ namespace ExploraFITS
                        | inc_de | = | fits.CD2[0] fits.CD2[1] | x | inc_y |
                     */
 
-                    double inc_ar = fits.CD1[0] * inc_x + fits.CD1[1] * inc_y;
-                    double inc_de = fits.CD2[0] * inc_x + fits.CD2[1] * inc_y;
+                    double inc_ar = principal.CD1[0] * inc_x + principal.CD1[1] * inc_y;
+                    double inc_de = principal.CD2[0] * inc_x + principal.CD2[1] * inc_y;
 
-                    xr = fits.CRVAL[0] + inc_ar;
-                    yr = fits.CRVAL[1] + inc_de;
+                    xr = principal.CRVAL[0] + inc_ar;
+                    yr = principal.CRVAL[1] + inc_de;
                     break;
                 case 1:
-                    if (Math.Abs(fits.CDELT[0]) > 1e-20)
+                    if (Math.Abs(principal.CDELT[0]) > 1e-20)
                     {
-                        xr = fits.CRVAL[0] + fits.CDELT[0] * (px - fits.CRPIX[0]);
+                        xr = principal.CRVAL[0] + principal.CDELT[0] * (px - principal.CRPIX[0]);
                     }
                     else
                     {
                         xr = 0;
                     }
-                    if (Math.Abs(fits.CDELT[1]) > 1e-20)
+                    if (Math.Abs(principal.CDELT[1]) > 1e-20)
                     {
-                        yr = fits.CRVAL[1] + fits.CDELT[1] * (py - fits.CRPIX[1]);
+                        yr = principal.CRVAL[1] + principal.CDELT[1] * (py - principal.CRPIX[1]);
                     }
                     else
                     {
@@ -1882,16 +1925,16 @@ namespace ExploraFITS
                     }
                     break;
                 default:
-                    xr = fits.CRVAL[0] + fits.CDELT[0] * (px - fits.CRPIX[0]) * fits.PC1[0] + fits.CDELT[1] * (py - fits.CRPIX[1]) * fits.PC1[1];
-                    yr = fits.CRVAL[1] + fits.CDELT[0] * (px - fits.CRPIX[0]) * fits.PC2[0] + fits.CDELT[1] * (py - fits.CRPIX[1]) * fits.PC2[1];
+                    xr = principal.CRVAL[0] + principal.CDELT[0] * (px - principal.CRPIX[0]) * principal.PC1[0] + principal.CDELT[1] * (py - principal.CRPIX[1]) * principal.PC1[1];
+                    yr = principal.CRVAL[1] + principal.CDELT[0] * (px - principal.CRPIX[0]) * principal.PC2[0] + principal.CDELT[1] * (py - principal.CRPIX[1]) * principal.PC2[1];
                     break;
             }
             return new Coordenadas(xr, yr);
         }
         private PixelImg CoordenadasApixel(double ar, double de, int modo)
         {
-            double inc_ar = ar - fits.CRVAL[0];
-            double inc_de = de - fits.CRVAL[1];
+            double inc_ar = ar - principal.CRVAL[0];
+            double inc_de = de - principal.CRVAL[1];
             double inc_x;
             double inc_y;
             switch (modo)
@@ -1908,17 +1951,17 @@ namespace ExploraFITS
                        | -fits.CD1[1]  fits.CD1[0] | x | inc_de | = | inc_y |
                     */
 
-                    double determinante = fits.CD1[0] * fits.CD2[1] - fits.CD1[1] * fits.CD2[0];
-                    inc_x = (fits.CD2[1] * inc_ar - fits.CD2[0] * inc_de) / determinante;
-                    inc_y = (-fits.CD1[1] * inc_ar + fits.CD1[0] * inc_de) / determinante;
+                    double determinante = principal.CD1[0] * principal.CD2[1] - principal.CD1[1] * principal.CD2[0];
+                    inc_x = (principal.CD2[1] * inc_ar - principal.CD2[0] * inc_de) / determinante;
+                    inc_y = (-principal.CD1[1] * inc_ar + principal.CD1[0] * inc_de) / determinante;
                     break;
                 default:
-                    inc_x = inc_ar / fits.CDELT[0];
-                    inc_y = inc_de / fits.CDELT[1];
+                    inc_x = inc_ar / principal.CDELT[0];
+                    inc_y = inc_de / principal.CDELT[1];
                     break;
             }
-            int px = (int)(fits.CRPIX[0] + inc_x);
-            int py = (int)(fits.CRPIX[1] + inc_y);
+            int px = (int)(principal.CRPIX[0] + inc_x);
+            int py = (int)(principal.CRPIX[1] + inc_y);
             return new PixelImg(Vx(px), Vy(py));
         }
         /*
@@ -1938,26 +1981,28 @@ namespace ExploraFITS
         */
         private double Dato(int i1, int i2)
         {
-            if (fits.NAXIS == 2)
+            if (principal.NAXIS == 2)
             {
                 return clase_dato switch
                 {
-                    1 => fits.datosb[i1, i2],
-                    2 => fits.datoss[i1, i2],
-                    3 => fits.datosi[i1, i2],
-                    4 => fits.datosf[i1, i2],
-                    _ => fits.datosd[i1, i2],
+                    1 => principal.datosb[i1, i2],
+                    2 => principal.datoss[i1, i2],
+                    3 => principal.datosi[i1, i2],
+                    4 => principal.datosf[i1, i2],
+                    6 => principal.datosl[i1, i2],
+                    _ => principal.datosd[i1, i2],
                 };
             }
             else
             {
                 return clase_dato switch
                 {
-                    1 => fits.datosb3[i1, i2, i3],
-                    2 => fits.datoss3[i1, i2, i3],
-                    3 => fits.datosi3[i1, i2, i3],
-                    4 => fits.datosf3[i1, i2, i3],
-                    _ => fits.datosd3[i1, i2, i3],
+                    1 => principal.datosb3[i1, i2, i3],
+                    2 => principal.datoss3[i1, i2, i3],
+                    3 => principal.datosi3[i1, i2, i3],
+                    4 => principal.datosf3[i1, i2, i3],
+                    6 => principal.datosl3[i1, i2, i3],
+                    _ => principal.datosd3[i1, i2, i3],
                 };
             }
         }
@@ -1968,86 +2013,86 @@ namespace ExploraFITS
             double min_acotado;
             double max_acotado;
             double fp;
-            if (fits.v_acotar_min.Text.Trim().Length > 0)
+            if (principal.v_acotar_min.Text.Trim().Length > 0)
             {
-                if (fits.v_acotar_min.Text.Trim().IndexOf('%') != -1)
+                if (principal.v_acotar_min.Text.Trim().IndexOf('%') != -1)
                 {
                     if (!h)
                     {
                         MessageBox.Show(Idioma.msg[Idioma.lengua, 86], Idioma.msg[Idioma.lengua, 85], MessageBoxButtons.OK, MessageBoxIcon.Error);
                         min_acotado = 0;
-                        fits.v_acotar_min.Text = min_acotado.ToString();
+                        principal.v_acotar_min.Text = min_acotado.ToString();
                     }
                     else
                     {
-                        string s = fits.v_acotar_min.Text.Trim().Replace('%', ' ').Trim();
-                        min_acotado = Convert.ToDouble(s.Replace(fits.s_millar, fits.s_decimal)) / 100;
+                        string s = principal.v_acotar_min.Text.Trim().Replace('%', ' ').Trim();
+                        min_acotado = Convert.ToDouble(s.Replace(principal.s_millar, principal.s_decimal)) / 100;
                         int suma = 0;
-                        for (int i = 1; i < fits.num_histogramas; i++)
+                        for (int i = 1; i < principal.num_histogramas; i++)
                         {
-                            suma += fits.histograma[i];
+                            suma += principal.histograma[i];
                         }
                         int suma_max = (int)(suma * min_acotado);
                         min_acotado = 0;
                         suma = 0;
-                        for (int i = 0; i < fits.num_histogramas; i++)
+                        for (int i = 0; i < principal.num_histogramas; i++)
                         {
-                            suma += fits.histograma[i];
+                            suma += principal.histograma[i];
                             if (suma >= suma_max)
                             {
                                 min_acotado = (i == 0) ? 0 : (i - 1) * ancho_valor_histograma;
                                 break;
                             }
                         }
-                        fits.v_acotar_min.Text = min_acotado.ToString();
+                        principal.v_acotar_min.Text = min_acotado.ToString();
                     }
                 }
                 else
                 {
-                    min_acotado = Convert.ToDouble(fits.v_acotar_min.Text.Trim().Replace(fits.s_millar, fits.s_decimal));
+                    min_acotado = Convert.ToDouble(principal.v_acotar_min.Text.Trim().Replace(principal.s_millar, principal.s_decimal));
                 }
             }
             else
             {
                 min_acotado = min_abs;
             }
-            if (fits.v_acotar_max.Text.Trim().Length > 0)
+            if (principal.v_acotar_max.Text.Trim().Length > 0)
             {
-                if (fits.v_acotar_max.Text.Trim().IndexOf('%') != -1)
+                if (principal.v_acotar_max.Text.Trim().IndexOf('%') != -1)
                 {
                     if (!h)
                     {
                         MessageBox.Show(Idioma.msg[Idioma.lengua, 86], Idioma.msg[Idioma.lengua, 87], MessageBoxButtons.OK, MessageBoxIcon.Error);
                         max_acotado = 0;
-                        fits.v_acotar_max.Text = min_acotado.ToString();
+                        principal.v_acotar_max.Text = min_acotado.ToString();
                     }
                     else
                     {
-                        string s = fits.v_acotar_max.Text.Trim().Replace('%', ' ').Trim();
-                        max_acotado = Convert.ToDouble(s.Replace(fits.s_millar, fits.s_decimal)) / 100;
+                        string s = principal.v_acotar_max.Text.Trim().Replace('%', ' ').Trim();
+                        max_acotado = Convert.ToDouble(s.Replace(principal.s_millar, principal.s_decimal)) / 100;
                         int suma = 0;
-                        for (int i = 1; i < fits.num_histogramas; i++)
+                        for (int i = 1; i < principal.num_histogramas; i++)
                         {
-                            suma += fits.histograma[i];
+                            suma += principal.histograma[i];
                         }
                         int suma_max = (int)(suma * max_acotado);
                         max_acotado = double.MaxValue;
                         suma = 0;
-                        for (int i = 0; i < fits.num_histogramas; i++)
+                        for (int i = 0; i < principal.num_histogramas; i++)
                         {
-                            suma += fits.histograma[i];
+                            suma += principal.histograma[i];
                             if (suma >= suma_max)
                             {
                                 max_acotado = i * ancho_valor_histograma;
                                 break;
                             }
                         }
-                        fits.v_acotar_max.Text = max_acotado.ToString();
+                        principal.v_acotar_max.Text = max_acotado.ToString();
                     }
                 }
                 else
                 {
-                    max_acotado = Convert.ToDouble(fits.v_acotar_max.Text.Trim().Replace(fits.s_millar, fits.s_decimal));
+                    max_acotado = Convert.ToDouble(principal.v_acotar_max.Text.Trim().Replace(principal.s_millar, principal.s_decimal));
                 }
             }
             else
@@ -2067,7 +2112,7 @@ namespace ExploraFITS
             }
             else
             {
-                if (fits.alta_resolucion.Checked)
+                if (principal.alta_resolucion.Checked)
                 {
                     // La imagen es RGB48, es decir, los canales de color son de dos bytes pero sólo se usan 13 bits (0-8192)
 
@@ -2084,7 +2129,7 @@ namespace ExploraFITS
         }
         private int RegistraPixelEnFlujo(int n, double val)
         {
-            if (fits.alta_resolucion.Checked)
+            if (principal.alta_resolucion.Checked)
             {
                 byte canal_byte_bajo;
                 byte canal_byte_alto;
@@ -2120,7 +2165,7 @@ namespace ExploraFITS
                         flujo[n++] = (byte)(color_cota_sup.R >> 3);
                         return n;
                     }
-                    if (fits.raiz.Checked) val = Math.Sqrt((val < 0) ? 0 : val);
+                    if (principal.raiz.Checked) val = Math.Sqrt((val < 0) ? 0 : val);
                     canal_byte_bajo = (byte)((ushort)((val < 0) ? 0 : val) & 255);
                     canal_byte_alto = (byte)((ushort)((val < 0) ? 0 : val) >> 3);
                     flujo[n++] = canal_byte_bajo;
@@ -2151,7 +2196,7 @@ namespace ExploraFITS
                     flujo[n++] = (byte)(color_cota_sup.R >> 3);
                     return n;
                 }
-                if (fits.raiz.Checked) val = Math.Sqrt(val < 0 ? 0 : val);
+                if (principal.raiz.Checked) val = Math.Sqrt(val < 0 ? 0 : val);
                 ushort valus = (ushort)((((val < 0) ? 0 : val) - estadistica.min_acotado) * estadistica.fp);
                 canal_byte_bajo = (byte)(valus & 255);
                 canal_byte_alto = (byte)(valus >> 8);
@@ -2190,7 +2235,7 @@ namespace ExploraFITS
                     flujo[n++] = color_cota_sup.R;
                     return n;
                 }
-                if (fits.raiz.Checked) val = Math.Sqrt((val < 0) ? 0 : val);
+                if (principal.raiz.Checked) val = Math.Sqrt((val < 0) ? 0 : val);
                 flujo[n++] = canal = (byte)((val < 0) ? 0 : val);
                 flujo[n++] = canal;
                 flujo[n++] = canal;
@@ -2210,7 +2255,7 @@ namespace ExploraFITS
                 flujo[n++] = color_cota_sup.R;
                 return n;
             }
-            if (fits.raiz.Checked) val = Math.Sqrt((val < 0) ? 0 : val);
+            if (principal.raiz.Checked) val = Math.Sqrt((val < 0) ? 0 : val);
             canal = (byte)(estadistica.fp * ((val < 0) ? 0 : val - estadistica.min_acotado));
 
             // Blue, Green, Red
@@ -2265,7 +2310,7 @@ namespace ExploraFITS
 
             // Crea la matriz de datos de tipo float
 
-            fits.datosf = new float[data.Width, data.Height];
+            principal.datosf = new float[data.Width, data.Height];
             float val;
             int puntero = 0;
             v_brillo.Text = string.Format("{0:N0}", 0);
@@ -2283,7 +2328,7 @@ namespace ExploraFITS
                     {
                         val += flujo[puntero++];
                     }
-                    fits.datosf[i1, i2] = val / bytesPorPixel;
+                    principal.datosf[i1, i2] = val / bytesPorPixel;
                 }
             }
             v_brillo.Text = string.Empty;
@@ -2291,15 +2336,15 @@ namespace ExploraFITS
 
         public bool Dibuja(object[,] datos, bool h)
         {
-            fits.Disponible(false);
+            principal.Disponible(false);
             Geometria();
             CargaFlujo(datos, h);
-            CreaImagen(fits.img);
+            CreaImagen(principal.img);
 
             // Mostrar la imagen
 
-            lienzo.Image = fits.img;
-            fits.Disponible(true);
+            lienzo.Image = principal.img;
+            principal.Disponible(true);
             return true;
         }
         private Rango NormalizaDatos(object[,] datos, bool h)
@@ -2308,13 +2353,13 @@ namespace ExploraFITS
             double min_abs = byte.MaxValue;
             double max_abs = byte.MinValue;
             double media = 0;
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
-                    if (fits.tipoDato == 0)
+                    if (principal.tipoDato == 0)
                     {
-                        val = fits.byPorDato switch
+                        val = principal.byPorDato switch
                         {
                             1 => (byte)datos[i1, i2],
                             2 => (int)datos[i1, i2],
@@ -2323,13 +2368,13 @@ namespace ExploraFITS
                     }
                     else
                     {
-                        val = fits.byPorDato switch
+                        val = principal.byPorDato switch
                         {
                             4 => (double)datos[i1, i2],
                             _ => (double)datos[i1, i2],
                         };
                     }
-                    if (fits.raiz.Checked)
+                    if (principal.raiz.Checked)
                     {
                         val = Math.Sqrt(val);
                         if (double.IsNaN(val)) continue;
@@ -2347,19 +2392,19 @@ namespace ExploraFITS
             }
             else
             {
-                ancho_valor_histograma = max_abs / (fits.num_histogramas - 1);
+                ancho_valor_histograma = max_abs / (principal.num_histogramas - 1);
             }
-            int n = fits.NAXISn[0] * fits.NAXISn[1];
+            int n = principal.NAXISn[0] * principal.NAXISn[1];
             media /= n;
             double df;
             double dest = 0;
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
-                    if (fits.tipoDato == 0)
+                    if (principal.tipoDato == 0)
                     {
-                        val = fits.byPorDato switch
+                        val = principal.byPorDato switch
                         {
                             1 => (byte)datos[i1, i2],
                             2 => (int)datos[i1, i2],
@@ -2368,13 +2413,13 @@ namespace ExploraFITS
                     }
                     else
                     {
-                        val = fits.byPorDato switch
+                        val = principal.byPorDato switch
                         {
                             4 => (double)datos[i1, i2],
                             _ => (double)datos[i1, i2],
                         };
                     }
-                    if (fits.raiz.Checked)
+                    if (principal.raiz.Checked)
                     {
                         val = Math.Sqrt(val);
                         if (double.IsNaN(val)) continue;
@@ -2385,11 +2430,11 @@ namespace ExploraFITS
                     {
                         if (val < 0)
                         {
-                            fits.histograma[0]++;
+                            principal.histograma[0]++;
                         }
                         else
                         {
-                            fits.histograma[(int)(val / ancho_valor_histograma)]++;
+                            principal.histograma[(int)(val / ancho_valor_histograma)]++;
                         }
                     }
                 }
@@ -2400,20 +2445,20 @@ namespace ExploraFITS
         private void CargaFlujo(object[,] datos, bool h)
         {
             estadistica = null;
-            if (fits.normalizar.Checked)
+            if (principal.normalizar.Checked)
             {
                 estadistica = NormalizaDatos(datos, h);
-                if (h) fits.DibujaHistograma();
+                if (h) principal.DibujaHistograma();
             }
             int n = 0;
             string s = v_brillo.Text;
             v_brillo.Text = string.Format("{0:N0}", n);
             Application.DoEvents();
-            if (fits.invertir_y.Checked)
+            if (principal.invertir_y.Checked)
             {
-                for (int i2 = fits.NAXISn[1] - 1; i2 >= 0; i2--)
+                for (int i2 = principal.NAXISn[1] - 1; i2 >= 0; i2--)
                 {
-                    if (fits.invertir_x.Checked)
+                    if (principal.invertir_x.Checked)
                     {
                         LeeFilaIx(datos, i2, ref n);
                     }
@@ -2425,9 +2470,9 @@ namespace ExploraFITS
             }
             else
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
-                    if (fits.invertir_x.Checked)
+                    if (principal.invertir_x.Checked)
                     {
                         LeeFilaIx(datos, i2, ref n);
                     }
@@ -2446,9 +2491,9 @@ namespace ExploraFITS
             {
                 for (int i1 = 0; i1 < ancho_img_datos; i1++)
                 {
-                    if (fits.tipoDato == 0)
+                    if (principal.tipoDato == 0)
                     {
-                        val = fits.byPorDato switch
+                        val = principal.byPorDato switch
                         {
                             1 => (double)datos[i1, i2],
                             2 => (double)datos[i1, i2],
@@ -2457,7 +2502,7 @@ namespace ExploraFITS
                     }
                     else
                     {
-                        val = fits.byPorDato switch
+                        val = principal.byPorDato switch
                         {
                             4 => (double)datos[i1, i2],
                             _ => (double)datos[i1, i2],
@@ -2475,9 +2520,9 @@ namespace ExploraFITS
             {
                 for (int i1 = ancho_img_datos - 1; i1 >= 0; i1--)
                 {
-                    if (fits.tipoDato == 0)
+                    if (principal.tipoDato == 0)
                     {
-                        val = fits.byPorDato switch
+                        val = principal.byPorDato switch
                         {
                             1 => (double)datos[i1, i2],
                             2 => (double)datos[i1, i2],
@@ -2486,7 +2531,7 @@ namespace ExploraFITS
                     }
                     else
                     {
-                        val = fits.byPorDato switch
+                        val = principal.byPorDato switch
                         {
                             4 => (double)datos[i1, i2],
                             _ => (double)datos[i1, i2],
@@ -2500,15 +2545,15 @@ namespace ExploraFITS
 
         public bool Dibuja(byte[,] datos, bool h)
         {
-            fits.Disponible(false);
+            principal.Disponible(false);
             Geometria();
             CargaFlujo(datos, h);
-            CreaImagen(fits.img);
+            CreaImagen(principal.img);
 
             // Mostrar la imagen
 
-            lienzo.Image = fits.img;
-            fits.Disponible(true);
+            lienzo.Image = principal.img;
+            principal.Disponible(true);
             return true;
         }
         private Rango NormalizaDatos(byte[,] datos, bool h)
@@ -2517,11 +2562,11 @@ namespace ExploraFITS
             double min_abs = double.MaxValue;
             double max_abs = double.MinValue;
             double media = 0;
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
-                    if (fits.raiz.Checked)
+                    if (principal.raiz.Checked)
                     {
                         val = Math.Sqrt(datos[i1, i2]);
                         if (double.IsNaN(val)) continue;
@@ -2543,18 +2588,18 @@ namespace ExploraFITS
             }
             else
             {
-                ancho_valor_histograma = max_abs / (fits.num_histogramas - 1);
+                ancho_valor_histograma = max_abs / (principal.num_histogramas - 1);
             }
-            int n = fits.NAXISn[0] * fits.NAXISn[1];
+            int n = principal.NAXISn[0] * principal.NAXISn[1];
             media /= n;
             double df;
             double dest = 0;
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
                     if (double.IsNaN(datos[i1, i2])) continue;
-                    if (fits.raiz.Checked)
+                    if (principal.raiz.Checked)
                     {
                         val = Math.Sqrt(datos[i1, i2]);
                         if (double.IsNaN(val)) continue;
@@ -2569,11 +2614,11 @@ namespace ExploraFITS
                     {
                         if (val < 0)
                         {
-                            fits.histograma[0]++;
+                            principal.histograma[0]++;
                         }
                         else
                         {
-                            fits.histograma[(int)(val / ancho_valor_histograma)]++;
+                            principal.histograma[(int)(val / ancho_valor_histograma)]++;
                         }
                     }
                 }
@@ -2584,20 +2629,20 @@ namespace ExploraFITS
         private void CargaFlujo(byte[,] datos, bool h)
         {
             estadistica = null;
-            if (fits.normalizar.Checked)
+            if (principal.normalizar.Checked)
             {
                 estadistica = NormalizaDatos(datos, h);
-                if (h) fits.DibujaHistograma();
+                if (h) principal.DibujaHistograma();
             }
             int n = 0;
             string s = v_brillo.Text;
             v_brillo.Text = string.Format("{0:N0}", n);
             Application.DoEvents();
-            if (fits.invertir_y.Checked)
+            if (principal.invertir_y.Checked)
             {
-                for (int i2 = fits.NAXISn[1] - 1; i2 >= 0; i2--)
+                for (int i2 = principal.NAXISn[1] - 1; i2 >= 0; i2--)
                 {
-                    if (fits.invertir_x.Checked)
+                    if (principal.invertir_x.Checked)
                     {
                         LeeFilaIx(datos, i2, ref n);
                     }
@@ -2609,9 +2654,9 @@ namespace ExploraFITS
             }
             else
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
-                    if (fits.invertir_x.Checked)
+                    if (principal.invertir_x.Checked)
                     {
                         LeeFilaIx(datos, i2, ref n);
                     }
@@ -2648,15 +2693,15 @@ namespace ExploraFITS
 
         public bool Dibuja(short[,] datos, bool h)
         {
-            fits.Disponible(false);
+            principal.Disponible(false);
             Geometria();
             CargaFlujo(datos, h);
-            CreaImagen(fits.img);
+            CreaImagen(principal.img);
 
             // Mostrar la imagen
 
-            lienzo.Image = fits.img;
-            fits.Disponible(true);
+            lienzo.Image = principal.img;
+            principal.Disponible(true);
             return true;
         }
         private Rango NormalizaDatos(short[,] datos, bool h)
@@ -2665,11 +2710,11 @@ namespace ExploraFITS
             double min_abs = double.MaxValue;
             double max_abs = double.MinValue;
             double media = 0;
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
-                    if (fits.raiz.Checked)
+                    if (principal.raiz.Checked)
                     {
                         val = Math.Sqrt(datos[i1, i2]);
                         if (double.IsNaN(val)) continue;
@@ -2691,18 +2736,18 @@ namespace ExploraFITS
             }
             else
             {
-                ancho_valor_histograma = max_abs / (fits.num_histogramas - 1);
+                ancho_valor_histograma = max_abs / (principal.num_histogramas - 1);
             }
-            int n = fits.NAXISn[0] * fits.NAXISn[1];
+            int n = principal.NAXISn[0] * principal.NAXISn[1];
             media /= n;
             double df;
             double dest = 0;
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
                     if (double.IsNaN(datos[i1, i2])) continue;
-                    if (fits.raiz.Checked)
+                    if (principal.raiz.Checked)
                     {
                         val = Math.Sqrt(datos[i1, i2]);
                         if (double.IsNaN(val)) continue;
@@ -2717,11 +2762,11 @@ namespace ExploraFITS
                     {
                         if (val < 0)
                         {
-                            fits.histograma[0]++;
+                            principal.histograma[0]++;
                         }
                         else
                         {
-                            fits.histograma[(int)(val / ancho_valor_histograma)]++;
+                            principal.histograma[(int)(val / ancho_valor_histograma)]++;
                         }
                     }
                 }
@@ -2732,20 +2777,20 @@ namespace ExploraFITS
         private void CargaFlujo(short[,] datos, bool h)
         {
             estadistica = null;
-            if (fits.normalizar.Checked)
+            if (principal.normalizar.Checked)
             {
                 estadistica = NormalizaDatos(datos, h);
-                if (h) fits.DibujaHistograma();
+                if (h) principal.DibujaHistograma();
             }
             int n = 0;
             string s = v_brillo.Text;
             v_brillo.Text = string.Format("{0:N0}", n);
             Application.DoEvents();
-            if (fits.invertir_y.Checked)
+            if (principal.invertir_y.Checked)
             {
-                for (int i2 = fits.NAXISn[1] - 1; i2 >= 0; i2--)
+                for (int i2 = principal.NAXISn[1] - 1; i2 >= 0; i2--)
                 {
-                    if (fits.invertir_x.Checked)
+                    if (principal.invertir_x.Checked)
                     {
                         LeeFilaIx(datos, i2, ref n);
                     }
@@ -2757,9 +2802,9 @@ namespace ExploraFITS
             }
             else
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
-                    if (fits.invertir_x.Checked)
+                    if (principal.invertir_x.Checked)
                     {
                         LeeFilaIx(datos, i2, ref n);
                     }
@@ -2796,15 +2841,15 @@ namespace ExploraFITS
 
         public bool Dibuja(int[,] datos, bool h)
         {
-            fits.Disponible(false);
+            principal.Disponible(false);
             Geometria();
             CargaFlujo(datos, h);
-            CreaImagen(fits.img);
+            CreaImagen(principal.img);
 
             // Mostrar la imagen
 
-            lienzo.Image = fits.img;
-            fits.Disponible(true);
+            lienzo.Image = principal.img;
+            principal.Disponible(true);
             return true;
         }
         private Rango NormalizaDatos(int[,] datos, bool h)
@@ -2813,11 +2858,11 @@ namespace ExploraFITS
             double min_abs = double.MaxValue;
             double max_abs = double.MinValue;
             double media = 0;
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
-                    if (fits.raiz.Checked)
+                    if (principal.raiz.Checked)
                     {
                         val = Math.Sqrt(datos[i1, i2]);
                         if (double.IsNaN(val)) continue;
@@ -2839,18 +2884,18 @@ namespace ExploraFITS
             }
             else
             {
-                ancho_valor_histograma = max_abs / (fits.num_histogramas - 1);
+                ancho_valor_histograma = max_abs / (principal.num_histogramas - 1);
             }
-            int n = fits.NAXISn[0] * fits.NAXISn[1];
+            int n = principal.NAXISn[0] * principal.NAXISn[1];
             media /= n;
             double df;
             double dest = 0;
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
                     if (double.IsNaN(datos[i1, i2])) continue;
-                    if (fits.raiz.Checked)
+                    if (principal.raiz.Checked)
                     {
                         val = Math.Sqrt(datos[i1, i2]);
                         if (double.IsNaN(val)) continue;
@@ -2865,11 +2910,11 @@ namespace ExploraFITS
                     {
                         if (val < 0)
                         {
-                            fits.histograma[0]++;
+                            principal.histograma[0]++;
                         }
                         else
                         {
-                            fits.histograma[(int)(val / ancho_valor_histograma)]++;
+                            principal.histograma[(int)(val / ancho_valor_histograma)]++;
                         }
                     }
                 }
@@ -2880,20 +2925,20 @@ namespace ExploraFITS
         private void CargaFlujo(int[,] datos, bool h)
         {
             estadistica = null;
-            if (fits.normalizar.Checked)
+            if (principal.normalizar.Checked)
             {
                 estadistica = NormalizaDatos(datos, h);
-                if (h) fits.DibujaHistograma();
+                if (h) principal.DibujaHistograma();
             }
             int n = 0;
             string s = v_brillo.Text;
             v_brillo.Text = string.Format("{0:N0}", n);
             Application.DoEvents();
-            if (fits.invertir_y.Checked)
+            if (principal.invertir_y.Checked)
             {
-                for (int i2 = fits.NAXISn[1] - 1; i2 >= 0; i2--)
+                for (int i2 = principal.NAXISn[1] - 1; i2 >= 0; i2--)
                 {
-                    if (fits.invertir_x.Checked)
+                    if (principal.invertir_x.Checked)
                     {
                         LeeFilaIx(datos, i2, ref n);
                     }
@@ -2905,9 +2950,9 @@ namespace ExploraFITS
             }
             else
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
-                    if (fits.invertir_x.Checked)
+                    if (principal.invertir_x.Checked)
                     {
                         LeeFilaIx(datos, i2, ref n);
                     }
@@ -2942,31 +2987,30 @@ namespace ExploraFITS
             ContadorLineas(i2);
         }
 
-        public bool Dibuja(float[,] datos, bool h)
+        public bool Dibuja(long[,] datos, bool h)
         {
-            fits.Disponible(false);
+            principal.Disponible(false);
             Geometria();
             CargaFlujo(datos, h);
-            CreaImagen(fits.img);
+            CreaImagen(principal.img);
 
             // Mostrar la imagen
 
-            lienzo.Image = fits.img;
-            fits.Disponible(true);
+            lienzo.Image = principal.img;
+            principal.Disponible(true);
             return true;
         }
-        private Rango NormalizaDatos(float[,] datos, bool h)
+        private Rango NormalizaDatos(long[,] datos, bool h)
         {
             double val;
             double min_abs = double.MaxValue;
             double max_abs = double.MinValue;
             double media = 0;
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
-                    if (float.IsNaN(datos[i1, i2])) continue;
-                    if (fits.raiz.Checked)
+                    if (principal.raiz.Checked)
                     {
                         val = Math.Sqrt(datos[i1, i2]);
                         if (double.IsNaN(val)) continue;
@@ -2988,18 +3032,18 @@ namespace ExploraFITS
             }
             else
             {
-                ancho_valor_histograma = max_abs / (fits.num_histogramas - 1);
+                ancho_valor_histograma = max_abs / (principal.num_histogramas - 1);
             }
-            int n = fits.NAXISn[0] * fits.NAXISn[1];
+            int n = principal.NAXISn[0] * principal.NAXISn[1];
             media /= n;
             double df;
             double dest = 0;
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
-                    if (float.IsNaN(datos[i1, i2])) continue;
-                    if (fits.raiz.Checked)
+                    if (double.IsNaN(datos[i1, i2])) continue;
+                    if (principal.raiz.Checked)
                     {
                         val = Math.Sqrt(datos[i1, i2]);
                         if (double.IsNaN(val)) continue;
@@ -3014,11 +3058,11 @@ namespace ExploraFITS
                     {
                         if (val < 0)
                         {
-                            fits.histograma[0]++;
+                            principal.histograma[0]++;
                         }
                         else
                         {
-                            fits.histograma[(int)(val / ancho_valor_histograma)]++;
+                            principal.histograma[(long)(val / ancho_valor_histograma)]++;
                         }
                     }
                 }
@@ -3026,23 +3070,23 @@ namespace ExploraFITS
             dest = Math.Sqrt(dest / n);
             return Estadistica(min_abs, max_abs, media, dest, h);
         }
-        private void CargaFlujo(float[,] datos, bool h)
+        private void CargaFlujo(long[,] datos, bool h)
         {
             estadistica = null;
-            if (fits.normalizar.Checked)
+            if (principal.normalizar.Checked)
             {
                 estadistica = NormalizaDatos(datos, h);
-                if (h) fits.DibujaHistograma();
+                if (h) principal.DibujaHistograma();
             }
             int n = 0;
             string s = v_brillo.Text;
             v_brillo.Text = string.Format("{0:N0}", n);
             Application.DoEvents();
-            if (fits.invertir_y.Checked)
+            if (principal.invertir_y.Checked)
             {
-                for (int i2 = fits.NAXISn[1] - 1; i2 >= 0; i2--)
+                for (int i2 = principal.NAXISn[1] - 1; i2 >= 0; i2--)
                 {
-                    if (fits.invertir_x.Checked)
+                    if (principal.invertir_x.Checked)
                     {
                         LeeFilaIx(datos, i2, ref n);
                     }
@@ -3054,9 +3098,158 @@ namespace ExploraFITS
             }
             else
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
-                    if (fits.invertir_x.Checked)
+                    if (principal.invertir_x.Checked)
+                    {
+                        LeeFilaIx(datos, i2, ref n);
+                    }
+                    else
+                    {
+                        LeeFila(datos, i2, ref n);
+                    }
+                }
+            }
+            v_brillo.Text = s;
+        }
+        private void LeeFila(long[,] datos, int i2, ref int n)
+        {
+            for (int i0 = 0; i0 < multiplicador_y; i0++)
+            {
+                for (int i1 = 0; i1 < ancho_img_datos; i1++)
+                {
+                    n = RegistraPixelEnFlujo(n, datos[i1, i2]);
+                }
+            }
+            ContadorLineas(i2);
+        }
+        private void LeeFilaIx(long[,] datos, int i2, ref int n)
+        {
+            for (int i0 = 0; i0 < multiplicador_y; i0++)
+            {
+                for (int i1 = ancho_img_datos - 1; i1 >= 0; i1--)
+                {
+                    n = RegistraPixelEnFlujo(n, datos[i1, i2]);
+                }
+            }
+            ContadorLineas(i2);
+        }
+
+        public bool Dibuja(float[,] datos, bool h)
+        {
+            principal.Disponible(false);
+            Geometria();
+            CargaFlujo(datos, h);
+            CreaImagen(principal.img);
+
+            // Mostrar la imagen
+
+            lienzo.Image = principal.img;
+            principal.Disponible(true);
+            return true;
+        }
+        private Rango NormalizaDatos(float[,] datos, bool h)
+        {
+            double val;
+            double min_abs = double.MaxValue;
+            double max_abs = double.MinValue;
+            double media = 0;
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
+            {
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
+                {
+                    if (float.IsNaN(datos[i1, i2])) continue;
+                    if (principal.raiz.Checked)
+                    {
+                        val = Math.Sqrt(datos[i1, i2]);
+                        if (double.IsNaN(val)) continue;
+                    }
+                    else
+                    {
+                        val = datos[i1, i2];
+                    }
+                    media += val;
+                    if (max_abs < val) max_abs = val;
+                    if (min_abs > val) min_abs = val;
+                }
+            }
+            if (max_abs == 0)
+            {
+                // Para evitar divisiones por 0 en la construcción del histograma
+
+                ancho_valor_histograma = 1;
+            }
+            else
+            {
+                ancho_valor_histograma = max_abs / (principal.num_histogramas - 1);
+            }
+            int n = principal.NAXISn[0] * principal.NAXISn[1];
+            media /= n;
+            double df;
+            double dest = 0;
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
+            {
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
+                {
+                    if (float.IsNaN(datos[i1, i2])) continue;
+                    if (principal.raiz.Checked)
+                    {
+                        val = Math.Sqrt(datos[i1, i2]);
+                        if (double.IsNaN(val)) continue;
+                    }
+                    else
+                    {
+                        val = datos[i1, i2];
+                    }
+                    df = val - media;
+                    dest += df * df;
+                    if (h)
+                    {
+                        if (val < 0)
+                        {
+                            principal.histograma[0]++;
+                        }
+                        else
+                        {
+                            principal.histograma[(int)(val / ancho_valor_histograma)]++;
+                        }
+                    }
+                }
+            }
+            dest = Math.Sqrt(dest / n);
+            return Estadistica(min_abs, max_abs, media, dest, h);
+        }
+        private void CargaFlujo(float[,] datos, bool h)
+        {
+            estadistica = null;
+            if (principal.normalizar.Checked)
+            {
+                estadistica = NormalizaDatos(datos, h);
+                if (h) principal.DibujaHistograma();
+            }
+            int n = 0;
+            string s = v_brillo.Text;
+            v_brillo.Text = string.Format("{0:N0}", n);
+            Application.DoEvents();
+            if (principal.invertir_y.Checked)
+            {
+                for (int i2 = principal.NAXISn[1] - 1; i2 >= 0; i2--)
+                {
+                    if (principal.invertir_x.Checked)
+                    {
+                        LeeFilaIx(datos, i2, ref n);
+                    }
+                    else
+                    {
+                        LeeFila(datos, i2, ref n);
+                    }
+                }
+            }
+            else
+            {
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
+                {
+                    if (principal.invertir_x.Checked)
                     {
                         LeeFilaIx(datos, i2, ref n);
                     }
@@ -3093,15 +3286,15 @@ namespace ExploraFITS
 
         public bool Dibuja(double[,] datos, bool h)
         {
-            fits.Disponible(false);
+            principal.Disponible(false);
             Geometria();
             CargaFlujo(datos, h);
-            CreaImagen(fits.img);
+            CreaImagen(principal.img);
 
             // Mostrar la imagen
 
-            lienzo.Image = fits.img;
-            fits.Disponible(true);
+            lienzo.Image = principal.img;
+            principal.Disponible(true);
             return true;
         }
         private Rango NormalizaDatos(double[,] datos, bool h)
@@ -3110,12 +3303,12 @@ namespace ExploraFITS
             double min_abs = double.MaxValue;
             double max_abs = double.MinValue;
             double media = 0;
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
                     if (double.IsNaN(datos[i1, i2])) continue;
-                    if (fits.raiz.Checked)
+                    if (principal.raiz.Checked)
                     {
                         val = Math.Sqrt(datos[i1, i2]);
                         if (double.IsNaN(val)) continue;
@@ -3137,18 +3330,18 @@ namespace ExploraFITS
             }
             else
             {
-                ancho_valor_histograma = max_abs / (fits.num_histogramas - 1);
+                ancho_valor_histograma = max_abs / (principal.num_histogramas - 1);
             }
-            int n = fits.NAXISn[0] * fits.NAXISn[1];
+            int n = principal.NAXISn[0] * principal.NAXISn[1];
             media /= n;
             double df;
             double dest = 0;
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
                     if (double.IsNaN(datos[i1, i2])) continue;
-                    if (fits.raiz.Checked)
+                    if (principal.raiz.Checked)
                     {
                         val = Math.Sqrt(datos[i1, i2]);
                         if (double.IsNaN(val)) continue;
@@ -3163,11 +3356,11 @@ namespace ExploraFITS
                     {
                         if (val < 0)
                         {
-                            fits.histograma[0]++;
+                            principal.histograma[0]++;
                         }
                         else
                         {
-                            fits.histograma[(int)(val / ancho_valor_histograma)]++;
+                            principal.histograma[(int)(val / ancho_valor_histograma)]++;
                         }
                     }
                 }
@@ -3178,20 +3371,20 @@ namespace ExploraFITS
         private void CargaFlujo(double[,] datos, bool h)
         {
             estadistica = null;
-            if (fits.normalizar.Checked)
+            if (principal.normalizar.Checked)
             {
                 estadistica = NormalizaDatos(datos, h);
-                if (h) fits.DibujaHistograma();
+                if (h) principal.DibujaHistograma();
             }
             int n = 0;
             string s = v_brillo.Text;
             v_brillo.Text = string.Format("{0:N0}", n);
             Application.DoEvents();
-            if (fits.invertir_y.Checked)
+            if (principal.invertir_y.Checked)
             {
-                for (int i2 = fits.NAXISn[1] - 1; i2 >= 0; i2--)
+                for (int i2 = principal.NAXISn[1] - 1; i2 >= 0; i2--)
                 {
-                    if (fits.invertir_x.Checked)
+                    if (principal.invertir_x.Checked)
                     {
                         LeeFilaIx(datos, i2, ref n);
                     }
@@ -3203,9 +3396,9 @@ namespace ExploraFITS
             }
             else
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
-                    if (fits.invertir_x.Checked)
+                    if (principal.invertir_x.Checked)
                     {
                         LeeFilaIx(datos, i2, ref n);
                     }
@@ -3244,10 +3437,10 @@ namespace ExploraFITS
 
         public bool Dibuja(byte[,,] datos, bool h, int i3)
         {
-            byte[,] datos2 = new byte[fits.NAXISn[0], fits.NAXISn[1]];
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            byte[,] datos2 = new byte[principal.NAXISn[0], principal.NAXISn[1]];
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i1 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i1 < principal.NAXISn[1]; i2++)
                 {
                     datos2[i1, i2] = datos[i1, i2, i3];
                 }
@@ -3257,10 +3450,10 @@ namespace ExploraFITS
         }
         public bool Dibuja(short[,,] datos, bool h, int i3)
         {
-            short[,] datos2 = new short[fits.NAXISn[0], fits.NAXISn[1]];
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            short[,] datos2 = new short[principal.NAXISn[0], principal.NAXISn[1]];
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
                     datos2[i1, i2] = datos[i1, i2, i3];
                 }
@@ -3270,10 +3463,23 @@ namespace ExploraFITS
         }
         public bool Dibuja(int[,,] datos, bool h, int i3)
         {
-            int[,] datos2 = new int[fits.NAXISn[0], fits.NAXISn[1]];
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            int[,] datos2 = new int[principal.NAXISn[0], principal.NAXISn[1]];
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
+                {
+                    datos2[i1, i2] = datos[i1, i2, i3];
+                }
+            }
+            Dibuja(datos2, h);
+            return true;
+        }
+        public bool Dibuja(long[,,] datos, bool h, int i3)
+        {
+            long[,] datos2 = new long[principal.NAXISn[0], principal.NAXISn[1]];
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
+            {
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
                     datos2[i1, i2] = datos[i1, i2, i3];
                 }
@@ -3283,10 +3489,10 @@ namespace ExploraFITS
         }
         public bool Dibuja(float[,,] datos, bool h, int i3)
         {
-            float[,] datos2 = new float[fits.NAXISn[0], fits.NAXISn[1]];
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            float[,] datos2 = new float[principal.NAXISn[0], principal.NAXISn[1]];
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
                     datos2[i1, i2] = datos[i1, i2, i3];
                 }
@@ -3296,10 +3502,10 @@ namespace ExploraFITS
         }
         public bool Dibuja(double[,,] datos, bool h, int i3)
         {
-            double[,] datos2 = new double[fits.NAXISn[0], fits.NAXISn[1]];
-            for (int i1 = 0; i1 < fits.NAXISn[0]; i1++)
+            double[,] datos2 = new double[principal.NAXISn[0], principal.NAXISn[1]];
+            for (int i1 = 0; i1 < principal.NAXISn[0]; i1++)
             {
-                for (int i2 = 0; i2 < fits.NAXISn[1]; i2++)
+                for (int i2 = 0; i2 < principal.NAXISn[1]; i2++)
                 {
                     datos2[i1, i2] = datos[i1, i2, i3];
                 }
@@ -3310,60 +3516,66 @@ namespace ExploraFITS
 
         public void Redibuja()
         {
-            if (fits.es_actual != null)
+            if (principal.es_actual != null)
             {
-                fits.DibujaEspectro();
+                principal.DibujaEspectro();
                 return;
             }
-            Array.Clear(fits.histograma, 0, fits.histograma.Length);
-            if (fits.NAXIS == 2)
+            Array.Clear(principal.histograma, 0, principal.histograma.Length);
+            if (principal.NAXIS == 2)
             {
                 switch (clase_dato)
                 {
                     case 1:
-                        Dibuja(fits.datosb, true);
+                        Dibuja(principal.datosb, true);
                         break;
                     case 2:
-                        Dibuja(fits.datoss, true);
+                        Dibuja(principal.datoss, true);
                         break;
                     case 3:
-                        Dibuja(fits.datosi, true);
+                        Dibuja(principal.datosi, true);
                         break;
                     case 4:
-                        Dibuja(fits.datosf, true);
+                        Dibuja(principal.datosf, true);
+                        break;
+                    case 6:
+                        Dibuja(principal.datosl, true);
                         break;
                     default:
-                        Dibuja(fits.datosd, true);
+                        Dibuja(principal.datosd, true);
                         break;
                 }
             }
         }
         public void Redibuja(int i3)
         {
-            if (fits.es_actual != null)
+            if (principal.es_actual != null)
             {
-                fits.DibujaEspectro();
+                principal.DibujaEspectro();
                 return;
             }
-            Array.Clear(fits.histograma, 0, fits.histograma.Length);
-            if (fits.NAXIS == 3)
+            Array.Clear(principal.histograma, 0, principal.histograma.Length);
+            if (principal.NAXIS == 3)
             {
                 switch (clase_dato)
                 {
                     case 1:
-                        Dibuja(fits.datosb3, true, i3);
+                        Dibuja(principal.datosb3, true, i3);
                         break;
                     case 2:
-                        Dibuja(fits.datoss3, true, i3);
+                        Dibuja(principal.datoss3, true, i3);
                         break;
                     case 3:
-                        Dibuja(fits.datosi3, true, i3);
+                        Dibuja(principal.datosi3, true, i3);
                         break;
                     case 4:
-                        Dibuja(fits.datosf3, true, i3);
+                        Dibuja(principal.datosf3, true, i3);
+                        break;
+                    case 6:
+                        Dibuja(principal.datosl3, true, i3);
                         break;
                     default:
-                        Dibuja(fits.datosd3, true, i3);
+                        Dibuja(principal.datosd3, true, i3);
                         break;
                 }
             }
@@ -3411,13 +3623,18 @@ namespace ExploraFITS
         }
         private void Lineas_elegidas_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (lista_elegidas.SelectedItem != null && lista_elegidas.SelectedIndex >= 0) lista_elegidas.Items.RemoveAt(lista_elegidas.SelectedIndex);
+            if (lista_elegidas.SelectedItem != null && lista_elegidas.SelectedIndex >= 0)
+            {
+                lista_elegidas.Items.RemoveAt(lista_elegidas.SelectedIndex);
+                Redibuja();
+                Console.Beep();
+            }
         }
         private void Lista_elegidas_MouseDown(object sender, MouseEventArgs e)
         {
             if (ModifierKeys.HasFlag(Keys.Control))
             {
-                double z = (v_z.Text.Trim().Length == 0) ? 0 : Convert.ToDouble(v_z.Text.Trim().Replace(fits.s_millar, fits.s_decimal));
+                double z = (v_z.Text.Trim().Length == 0) ? 0 : Convert.ToDouble(v_z.Text.Trim().Replace(principal.s_millar, principal.s_decimal));
                 double inv_1mz = 1 / (1 + z);
                 StringBuilder sb = new StringBuilder();
                 double xm;
@@ -3438,27 +3655,59 @@ namespace ExploraFITS
             bool ctrl = ModifierKeys.HasFlag(Keys.Control);
             if (S_simplifica.Checked)
             {
-                fits.BuscaPicosSimplificado();
+                principal.BuscaPicosSimplificado();
             }
             else
             {
-                fits.BuscaPicos();
+                principal.BuscaPicos();
             }
             if (picos.Count > 0)
             {
                 foreach (Pico p in picos)
                 {
-                    lista_picos.Items.Add(string.Format("{0,10:f3}  {1}", fits.es_actual.x[p.indice], p.valor));
+                    lista_picos.Items.Add(string.Format("{0,10:f3}  {1}", principal.es_actual.x[p.indice], p.valor));
                 }
                 if (ctrl)
                 {
                     foreach (Pico p in picos)
                     {
-                        double xm = fits.es_actual.x[p.indice];
-                        AddLineaAtomica(xm);
+                        double lon_onda = principal.es_actual.x[p.indice];
+                        double lon_onda_a = lon_onda;
+                        double lon_onda_p = lon_onda;
+
+                        // Ajustar al punto del espectro con la X más parecida
+
+                        if (lon_onda >= principal.es_actual.minx && lon_onda <= principal.es_actual.maxx)
+                        {
+                            for (int i = 0; i < principal.es_actual.x.Length; i++)
+                            {
+                                if (lon_onda == principal.es_actual.x[i])
+                                {
+                                    lon_onda = lon_onda_a = lon_onda_p = principal.es_actual.x[i];
+                                    break;
+                                }
+                                else if (lon_onda < principal.es_actual.x[i])
+                                {
+                                    if (principal.es_actual.x[i] - lon_onda < lon_onda - principal.es_actual.x[i - 1])
+                                    {
+                                        lon_onda_a = i == 0 ? principal.es_actual.x[i] : principal.es_actual.x[i - 1];
+                                        lon_onda = principal.es_actual.x[i];
+                                        lon_onda_p = i == principal.es_actual.x.Length - 1 ? principal.es_actual.x[i] : principal.es_actual.x[i + 1];
+                                    }
+                                    else
+                                    {
+                                        lon_onda_a = i > 1 ? principal.es_actual.x[i - 2] : i > 0 ? principal.es_actual.x[i - 1] : principal.es_actual.x[i];
+                                        lon_onda = i > 0 ? principal.es_actual.x[i - 1] : principal.es_actual.x[i];
+                                        lon_onda_p = principal.es_actual.x[i];
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        AddLineaAtomica(lon_onda, lon_onda_a, lon_onda_p);
                     }
                 }
-                if (fits.NAXIS == 3) Redibuja(i3);
+                if (principal.NAXIS == 3) Redibuja(i3);
                 else Redibuja();
             }
         }
@@ -3467,32 +3716,195 @@ namespace ExploraFITS
             if (picos != null) picos.Clear();
             lista_picos.Items.Clear();
             lista_elegidas.Items.Clear();
-            if (fits.NAXIS == 3) Redibuja(i3);
+            if (principal.NAXIS == 3) Redibuja(i3);
             else Redibuja();
         }
-        private void AddLineaAtomica(double v)
+        private void AddLineaAtomica(double v, double va, double vp)
         {
-            string linea;
-            double xm;
-            double xma = -1;
-            for (int i = 0; i < lista_elegibles.Items.Count; i++)
+            int intensidad = v_i.Text.Trim().Length == 0 ? 0 : Convert.ToInt32(v_i.Text.Trim());
+            double lon_onda;
+            double lon_onda_anterior = 0;
+            int ind_anterior = -1;
+            double cota;
+            double diferencia;
+            int ind_mayor;
+            double mayor_intensidad;
+            int ind_cerca;
+            double dif_londa;
+            double mas_cerca;
+            for (int i = 0; i < principal.lineas_atomicas.Count; i++)
             {
-                linea = lista_elegibles.Items[i].ToString();
-                xm = Convert.ToDouble(linea.Substring(0, 10).Trim());
-                if (xm > v)
+                if (principal.lineas_atomicas[i].intensidad >= intensidad)
                 {
-                    if (Math.Abs(xm - v) < Math.Abs(xma - v))
+                    lon_onda = principal.lineas_atomicas[i].longitud_onda;
+                    if (lon_onda == v)
                     {
-                        lista_elegidas.Items.Add(linea);
+                        ind_lineas.Add(i);
+                        lista_elegidas.Items.Add(lista_elegibles.Items[i]);
+                        break;
                     }
-                    else
+                    else if (lon_onda > v)
                     {
-                        lista_elegidas.Items.Add(lista_elegibles.Items[i - 1].ToString());
+                        if (ind_anterior == -1)
+                        {
+                            ind_lineas.Add(i);
+                            lista_elegidas.Items.Add(lista_elegibles.Items[i]);
+                        }
+                        else if (lon_onda - v < v - lon_onda_anterior)
+                        {
+                            diferencia = lon_onda - v;
+                            cota = vp - v;
+                            if (i > 0 && diferencia > cota)
+                            {
+                                // Difiere más que la distancia entre dos datos consecutivos del espectro
+
+                                // Buscar la de mayor intensidad dentro del intervalo y si no hay ninguna dentro, la más cercana
+
+                                ind_mayor = -1;
+                                mayor_intensidad = double.MinValue;
+
+                                ind_cerca = -1;
+                                mas_cerca = double.MaxValue;
+
+                                // Retroceder en el catálogo de líneas hasta que la diferencia en longitud de onda supere la 'diferencia'
+
+                                for (int k = i - 1; k >= 0; k--)
+                                {
+                                    dif_londa = Math.Abs(principal.lineas_atomicas[k].longitud_onda - v);
+                                    if (dif_londa > diferencia) break;
+                                    if (dif_londa < cota)
+                                    {
+                                        // La mayor intensidad dentro de la cota
+
+                                        if (mayor_intensidad < principal.lineas_atomicas[k].intensidad)
+                                        {
+                                            ind_mayor = k;
+                                            mayor_intensidad = principal.lineas_atomicas[k].intensidad;
+                                        }
+                                    }
+                                    else if (dif_londa < mas_cerca)
+                                    {
+                                        // La más próxima fuera de la cota
+
+                                        ind_cerca = k;
+                                        mas_cerca = dif_londa;
+                                    }
+                                }
+                                if (ind_mayor != -1)
+                                {
+                                    ind_lineas.Add(ind_mayor);
+                                    lista_elegidas.Items.Add(lista_elegibles.Items[ind_mayor]);
+                                }
+                                else
+                                {
+                                    if (ind_cerca != -1)
+                                    {
+                                        ind_lineas.Add(ind_cerca);
+                                        lista_elegidas.Items.Add(lista_elegibles.Items[ind_cerca]);
+                                    }
+                                    else
+                                    {
+                                        ind_lineas.Add(i);
+                                        lista_elegidas.Items.Add(lista_elegibles.Items[i]);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                ind_lineas.Add(i);
+                                lista_elegidas.Items.Add(lista_elegibles.Items[i]);
+                            }
+                        }
+                        else
+                        {
+                            diferencia = v - lon_onda_anterior;
+                            cota = v - va;
+                            if (i < principal.lineas_atomicas.Count - 1 && diferencia > cota)
+                            {
+                                // Difiere más que la distancia entre dos datos consecutivos del espectro
+
+                                // Buscar la de mayor intensidad dentro del intervalo y si no hay ninguna dentro, la más cercana
+
+                                ind_mayor = -1;
+                                mayor_intensidad = double.MinValue;
+
+                                ind_cerca = -1;
+                                mas_cerca = double.MaxValue;
+
+                                // Avanzar en el catálogo de líneas hasta que la diferencia en longitud de onda supere la 'diferencia'
+
+                                for (int k = ind_anterior + 1; k < principal.lineas_atomicas.Count; k++)
+                                {
+                                    dif_londa = Math.Abs(principal.lineas_atomicas[k].longitud_onda - v);
+                                    if (dif_londa > diferencia) break;
+                                    if (dif_londa < cota)
+                                    {
+                                        // La mayor intensidad dentro de la cota
+
+                                        if (mayor_intensidad < principal.lineas_atomicas[k].intensidad)
+                                        {
+                                            ind_mayor = k;
+                                            mayor_intensidad = principal.lineas_atomicas[k].intensidad;
+                                        }
+                                    }
+                                    else if (dif_londa < mas_cerca)
+                                    {
+                                        // La más próxima fuera de la cota
+
+                                        ind_cerca = k;
+                                        mas_cerca = dif_londa;
+                                    }
+                                }
+                                if (ind_mayor != -1)
+                                {
+                                    ind_lineas.Add(ind_mayor);
+                                    lista_elegidas.Items.Add(lista_elegibles.Items[ind_mayor]);
+                                }
+                                else
+                                {
+                                    if (ind_cerca != -1)
+                                    {
+                                        ind_lineas.Add(ind_cerca);
+                                        lista_elegidas.Items.Add(lista_elegibles.Items[ind_cerca]);
+                                    }
+                                    else
+                                    {
+                                        ind_lineas.Add(ind_anterior);
+                                        lista_elegidas.Items.Add(lista_elegibles.Items[ind_anterior]);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                ind_lineas.Add(ind_anterior);
+                                lista_elegidas.Items.Add(lista_elegibles.Items[ind_anterior]);
+                            }
+                        }
+                        break;
                     }
-                    break;
+                    ind_anterior = i;
+                    lon_onda_anterior = lon_onda;
                 }
-                xma = xm;
             }
+        }
+        private void B_e_Click(object sender, EventArgs e)
+        {
+            string elemento = v_e.Text.Trim();
+            if (elemento.Length == 0) return;
+            int intensidad = v_i.Text.Trim().Length == 0 ? 0 : Convert.ToInt32(v_i.Text.Trim());
+            for (int i = 0; i < principal.lineas_atomicas.Count; i++)
+            {
+                if (principal.lineas_atomicas[i].longitud_onda < principal.es_actual.minx) continue;
+                if (principal.lineas_atomicas[i].longitud_onda > principal.es_actual.maxx) break;
+                if (principal.lineas_atomicas[i].intensidad < intensidad) continue;
+                if (principal.lineas_atomicas[i].elemento.Equals(elemento, StringComparison.OrdinalIgnoreCase))
+                {
+                    ind_lineas.Add(i);
+                    lista_elegidas.Items.Add(lista_elegibles.Items[i]);
+                }
+            }
+            Redibuja();
+            Console.Beep();
         }
         private void Lista_picos_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -3500,25 +3912,31 @@ namespace ExploraFITS
             {
                 picos.RemoveAt(lista_picos.SelectedIndex);
                 lista_picos.Items.RemoveAt(lista_picos.SelectedIndex);
+                Redibuja();
+                Console.Beep();
             }
         }
         private void Lista_picos_MouseDown(object sender, MouseEventArgs e)
         {
             if (ModifierKeys.HasFlag(Keys.Control))
             {
-                double z = (v_z.Text.Trim().Length == 0) ? 0 : Convert.ToDouble(v_z.Text.Trim().Replace(fits.s_millar, fits.s_decimal));
+                double z = (v_z.Text.Trim().Length == 0) ? 0 : Convert.ToDouble(v_z.Text.Trim().Replace(principal.s_millar, principal.s_decimal));
                 double inv_1mz = 1 / (1 + z);
                 StringBuilder sb = new StringBuilder();
                 double xm;
                 for (int i = 0; i < picos.Count; i++)
                 {
-                    xm = fits.es_actual.x[picos[i].indice] * inv_1mz;
+                    xm = principal.es_actual.x[picos[i].indice] * inv_1mz;
                     sb.AppendFormat("{0};{1}\n", xm, picos[i].valor);
                 }
                 Clipboard.SetText(sb.ToString());
                 Console.Beep();
                 return;
             }
+        }
+        private void S_simplifica_CheckedChanged(object sender, EventArgs e)
+        {
+            Redibuja();
         }
     }
 }

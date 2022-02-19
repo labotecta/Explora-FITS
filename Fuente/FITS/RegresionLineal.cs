@@ -5,45 +5,48 @@ namespace ExploraFits
     class RegresionLineal
     {
         public double[,] V;         // Matriz de mínimos cuadradosa y var/covar
-        public double[] C;          // Coeficientes
-        public double[] SEC;        // Error estándar de los coeficientes
-        public double RYSQ;         // Codeficiente de correlación múltiple
-        public double SDVErr;       // Desviación estándar de los errores
-        public double FReg;         // Estadístico F de Fisher de la regresión
+        public double[] CA;         // Coeficientes
+        public double[] CB;         // Coeficientes
+        //private double[] SEC;     // Error estándar de los coeficientes
+        public double RYSQa;        // Codeficiente de correlación múltiple
+        public double RYSQb;
+        public double SDVErra;      // Desviación estándar de los errores
+        public double SDVErrb;      // Desviación estándar de los errores
+        public double FRega;        // Estadístico F de Fisher de la regresión
+        public double FRegb;        // Estadístico F de Fisher de la regresión
         public double[] Ycalc;      // Y calculado
-        public double[] DY;         // Residual values of Y
+        private double[] DY;        // Residual values of Y
         public double MY;           // Media de Y
         public double MYc;          // Media de Y calculado
         public double MErr;         // Error medio
         public double[] SDVMovil;   // Desviación estándar del error móvil
 
-        public bool Regress(double[] Y, double[,] X, double[] W, int movil)
+        public bool Regress(double[] Y, double[,] X, double[] W, int distancia_movil)
         {
-            int n_datos = Y.Length;                 // Númeero de datos
-            int terminos = X.Length / n_datos;      // Terminos del polinomio = grado + 1
-            int NGL = n_datos - terminos;           // Grados de libertad
+            int n_datos = Y.Length;                         // Número de datos
+            int terminos_polinomio = X.Length / n_datos;    // Terminos del polinomio = grado + 1
+            int NGL = n_datos - terminos_polinomio;         // Grados de libertad
             Ycalc = new double[n_datos];
-            DY = new double[n_datos];
             if (NGL < 1)
             {
                 // No hay datos suficientes
 
                 return false;
             }
-            V = new double[terminos, terminos];
-            C = new double[terminos];
-            SEC = new double[terminos];
-            double[] B = new double[terminos];   // Vector for LSQ
+            V = new double[terminos_polinomio, terminos_polinomio];
+            CA = new double[terminos_polinomio];
+            //SEC = new double[terminos];
+            double[] B = new double[terminos_polinomio];   // Vector for LSQ
 
             // Iniciar matrices
 
-            Array.Clear(V, 0, terminos * terminos);
+            Array.Clear(V, 0, terminos_polinomio * terminos_polinomio);
 
             // Matriz de mínimos cuadrados
 
-            for (int i = 0; i < terminos; i++)
+            for (int i = 0; i < terminos_polinomio; i++)
             {
-                for (int j = 0; j < terminos; j++)
+                for (int j = 0; j < terminos_polinomio; j++)
                 {
                     V[i, j] = 0;
                     for (int k = 0; k < n_datos; k++)
@@ -68,17 +71,33 @@ namespace ExploraFits
             // V ahora contiene la matriz de mínimos cuadrados invertida
             // Multiplicar por B para obtener los coeficientes (C = VB)
 
-            for (int i = 0; i < terminos; i++)
+            for (int i = 0; i < terminos_polinomio; i++)
             {
-                C[i] = 0;
-                for (int j = 0; j < terminos; j++)
+                CA[i] = 0;
+                for (int j = 0; j < terminos_polinomio; j++)
                 {
-                    C[i] = C[i] + V[i, j] * B[j];
+                    CA[i] = CA[i] + V[i, j] * B[j];
                 }
             }
-
+            for (int k = 0; k < n_datos; k++)
+            {
+                Ycalc[k] = 0;
+                for (int i = 0; i < terminos_polinomio; i++)
+                {
+                    Ycalc[k] += CA[i] * X[i, k];
+                }
+            }
+            Estadisticas(Y, X, W, distancia_movil);
+            return true;
+        }
+        public bool Estadisticas(double[] Y, double[,] X, double[] W, int distancia_movil)
+        {
             // Calcula estadísticas
 
+            int n_datos = Y.Length;
+            int terminos = X.Length / n_datos;
+            int NGL = n_datos - terminos;
+            DY = new double[n_datos];
             MY = 0;
             MYc = 0;
             MErr = 0;
@@ -100,61 +119,57 @@ namespace ExploraFits
             for (int k = 0; k < n_datos; k++)
             {
                 MY += Y[k];
-                Ycalc[k] = 0;
-                for (int i = 0; i < terminos; i++)
-                {
-                    Ycalc[k] += C[i] * X[i, k];
-                }
                 MYc += Ycalc[k];
                 DY[k] = Ycalc[k] - Y[k];
                 MErr += Math.Abs(DY[k]);
                 TSS += W[k] * (Y[k] - YBAR) * (Y[k] - YBAR);
                 RSS += W[k] * DY[k] * DY[k];
-                if (movil > 0)
+                if (distancia_movil > 0)
                 {
-                    if (k >= movil)
+                    if (k >= distancia_movil)
                     {
-                        SDVMovil[k] = SDVMovil[k - 1] - W[k - movil] * DY[k - movil] * DY[k - movil] + W[k] * DY[k] * DY[k];
+                        SDVMovil[k] = SDVMovil[k - 1] - W[k - distancia_movil] * DY[k - distancia_movil] * DY[k - distancia_movil] + W[k] * DY[k] * DY[k];
                     }
                     else
                     {
-                        SDVMovil[movil - 1] += W[k] * DY[k] * DY[k];
+                        SDVMovil[distancia_movil - 1] += W[k] * DY[k] * DY[k];
                     }
                 }
             }
-            if (movil > 0)
+            if (distancia_movil > 0)
             {
-                for (int k = movil; k < n_datos; k++)
+                for (int k = distancia_movil; k < n_datos; k++)
                 {
-                    SDVMovil[k] /= movil;
+                    SDVMovil[k] /= distancia_movil;
                     SDVMovil[k] = Math.Sqrt(SDVMovil[k]);
                 }
-                for (int k = 0; k < movil; k++)
+                for (int k = 0; k < distancia_movil; k++)
                 {
-                    SDVMovil[k] = SDVMovil[movil];
+                    SDVMovil[k] = SDVMovil[distancia_movil];
                 }
             }
             MY /= n_datos;
             MYc /= n_datos;
             MErr /= n_datos;
             double SSQ = RSS / NGL;
-            RYSQ = 1 - RSS / TSS;
-            FReg = 9999999;
+            RYSQa = RYSQb = 1 - RSS / TSS;
+            FRega = 9999999;
             {
-                FReg = RYSQ / (1 - RYSQ) * NGL / (terminos - 1);
+                FRega = RYSQa / (1 - RYSQa) * NGL / (terminos - 1);
             }
-            SDVErr = Math.Sqrt(SSQ);
+            FRegb = FRega;
+            SDVErra = SDVErrb = Math.Sqrt(SSQ);
 
             // Calcula la matriz var-covar y el error estándar de los coeficientes
 
-            for (int i = 0; i < terminos; i++)
+            /*for (int i = 0; i < terminos; i++)
             {
                 for (int j = 0; j < terminos; j++)
                 {
                     V[i, j] = V[i, j] * SSQ;
                 }
                 SEC[i] = Math.Sqrt(V[i, i]);
-            }
+            }*/
             return true;
         }
         public bool MatrizInversa(double[,] V)
