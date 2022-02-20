@@ -561,7 +561,7 @@ namespace ExploraFITS
                 linea = r.ReadLine();
                 sd = linea.Split('\t');
                 intensidad = sd[2].Trim().Length == 0 ? 0 : Convert.ToInt32(sd[2]);
-                longitud_onda = Convert.ToDouble(sd[3].Trim().Replace('.', ','));
+                longitud_onda = Convert.ToDouble(sd[3].Trim().Replace(s_millar, s_decimal));
                 elemento = sd[4].Trim();
                 isotopo = sd[4].Trim() + " " + sd[1].Trim();
                 lista_elegibles_principal.Add(string.Format("{0,10:f3} {1} {2}", longitud_onda, isotopo, intensidad));

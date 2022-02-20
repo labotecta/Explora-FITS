@@ -10,8 +10,8 @@
     <Company>Labotecta. Laboratorio Técnico de Tapia de Casariego</Company>
     <PackageIcon>telescopio.png</PackageIcon>
     <PackageIconUrl />
-    <AssemblyVersion>1.0.2.0</AssemblyVersion>
-    <FileVersion>1.0.2.0</FileVersion>
+    <AssemblyVersion>1.0.2.1</AssemblyVersion>
+    <FileVersion>1.0.2.1</FileVersion>
     <Version>1.0.1.11</Version>
     <Copyright>Labotecta</Copyright>
     <Platforms>AnyCPU;ARM64</Platforms>
@@ -20,7 +20,6 @@
 
   <ItemGroup>
     <None Remove="camposHL.txt" />
-    <None Remove="espectros_atomicos.csv" />
     <None Remove="idiomas.txt" />
     <None Remove="Imagenes\ingles.png" />
     <None Remove="Imagenes\spain.png" />
@@ -29,9 +28,6 @@
 
   <ItemGroup>
     <Content Include="camposHL.txt">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="espectros_atomicos.csv">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="idiomas.txt">
